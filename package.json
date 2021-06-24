@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "test",
-    "build": "tsc ./src/index.ts --outDir ."
+    "build": "tsc -p ."
   },
   "repository": {
     "type": "git",

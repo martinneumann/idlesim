@@ -29,7 +29,7 @@ namespace sim {
 		z: number,
 	}
 
-	function capitalizeFirstLetter(string) {
+	function capitalizeFirstLetter(string: string) {
 		return string.charAt(0).toUpperCase() + string.slice(1);
 	}
 
@@ -73,7 +73,7 @@ namespace sim {
 		birthday: Date;
 
 		relationships: Relationship[] = [];
-		inventory: Object[] = [];
+		inventory: WorldObject[] = [];
 		memory: Memory[] = [];
 
 		current_perceptions: any[] = [];
@@ -152,14 +152,14 @@ namespace sim {
 	class Relationship {
 	}
 
-	class Object {
-		name: string;
+	class WorldObject {
+		name: string = "";
 		descriptors: object_descriptor[] = [];
 		position: position = { x: 1, y: 1, z: 1 };
 	}
 
 	class Plant {
-		name: string;
+		name: string = "";
 	}
 
 	class Memory {
@@ -169,7 +169,7 @@ namespace sim {
 	class World {
 		name: string;
 		people: Person[] = [];
-		objects: Object[] = [];
+		objects: WorldObject[] = [];
 		plants: Plant[] = [];
 
 		constructor() {
@@ -183,6 +183,7 @@ namespace sim {
 		}
 
 		simulation_loop() {
+			console.log(`Time has started to affect the world.`)
 			timer(10000, 10000).subscribe(() => {
 				this.people.forEach(person => {
 					person.perceive(this.objects, this.people, this.plants);
