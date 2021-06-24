@@ -76,6 +76,7 @@ namespace sim {
 		inventory: Object[] = [];
 		memory: Memory[] = [];
 
+		current_perceptions: any[] = [];
 		intention: actions = actions.idle;
 		current_action: actions = actions.idle;
 
@@ -105,12 +106,11 @@ namespace sim {
 			
 		}
 
-		perceive() {
-
+		perceive(objects: object[], people: Person[], plants: Plant[]) {
+			this.current_perceptions.push(objects, people, plants);
 		}
 
 		do_action() {
-			this.decide();
 			let action_intensity = 1;
 			switch (this.intention) {
 				case actions.idle:
@@ -185,8 +185,10 @@ namespace sim {
 		simulation_loop() {
 			timer(10000, 10000).subscribe(() => {
 				this.people.forEach(person => {
+					person.perceive(this.objects, this.people, this.plants);
+					person.decide();
 					person.do_action();
-				})
+				});
 				console.log(`Another hour has passed.`);
 			});
 		}
