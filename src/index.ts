@@ -1,3 +1,4 @@
+import { timer } from 'rxjs';
 namespace sim {
 	enum actions {
 		idle = 1,
@@ -8,6 +9,10 @@ namespace sim {
 		pick_up = 6,
 		fell = 7,
 		build = 8,
+		marry = 9,
+		bear_child = 10,
+		sleep = 11,
+		search = 12,
 	}
 
 	enum object_descriptor {
@@ -53,6 +58,10 @@ namespace sim {
 		return first_name + " " + last_name
 	}
 
+	function get_random_whole_number(min: number, max: number) {
+		return Math.floor(Math.random() * (max - min)) + min
+	}
+
 	class Person {
 		name: string = "Unnamed Person";
 		age: number = 0;
@@ -61,11 +70,20 @@ namespace sim {
 		hunger: number = 100;
 		thirst: number = 100;
 
+		birthday: Date;
+
 		relationships: Relationship[] = [];
 		inventory: Object[] = [];
+		memory: Memory[] = [];
 
-		constructor(name: string) {
+		intention: actions = actions.idle;
+		current_action: actions = actions.idle;
+
+		constructor(name: string, birthday: Date, position: position) {
 			this.name = name;
+			this.birthday = birthday;
+			this.position = position;
+			console.log(`A person by the name of ${this.name} now exists.`);
 		}
 
 		body_functions(intensity: number) {
@@ -73,9 +91,28 @@ namespace sim {
 			this.thirst - intensity;
 		}
 
-		do_action(action: actions) {
+		decide() {
+			if (this.thirst < 50) {
+				console.log(`${this.name} is hungry.`);
+				this.intention = actions.eat;
+				return;
+			}
+			if (this.hunger < 50) {
+				console.log(`${this.name} is hungry.`);
+				this.intention = actions.eat;
+				return;
+			}
+			
+		}
+
+		perceive() {
+
+		}
+
+		do_action() {
+			this.decide();
 			let action_intensity = 1;
-			switch (action) {
+			switch (this.intention) {
 				case actions.idle:
 					console.log(`${this.name} decides to do nothing in particular for a bit.`)
 					break;
@@ -101,6 +138,10 @@ namespace sim {
 					break;
 				case actions.build:
 					break;
+				case actions.bear_child:
+					break;
+				case actions.marry:
+					break;
 			}
 
 			this.body_functions(action_intensity);
@@ -121,16 +162,35 @@ namespace sim {
 		name: string;
 	}
 
-	console.log(create_name());
-	console.log(create_name());
-	console.log(create_name());
-	console.log(create_name());
-	console.log(create_name());
-	console.log(create_name());
-	console.log(create_name());
-	console.log(create_name());
-	console.log(create_name());
-	console.log(create_name());
-	console.log(create_name());
-	console.log(create_name());
+	class Memory {
+
+	}
+
+	class World {
+		name: string;
+		people: Person[] = [];
+		objects: Object[] = [];
+		plants: Plant[] = [];
+
+		constructor() {
+			this.name = create_name();
+			console.log(`Somehow, somewhere, a world created itself. It is called ${this.name} by those who inhabit it.`)
+			for (let i = 0; i < get_random_whole_number(10, 30); i++) {
+				this.people.push(new Person(create_name(), new Date(Date.now()), {x: 1, y: 1, z: 1}));
+			}
+
+			this.simulation_loop();
+		}
+
+		simulation_loop() {
+			timer(10000, 10000).subscribe(() => {
+				this.people.forEach(person => {
+					person.do_action();
+				})
+				console.log(`Another hour has passed.`);
+			});
+		}
+	}	
+
+	const world = new World();
 }

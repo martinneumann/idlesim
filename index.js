@@ -10,6 +10,8 @@ var sim;
         actions[actions["pick_up"] = 6] = "pick_up";
         actions[actions["fell"] = 7] = "fell";
         actions[actions["build"] = 8] = "build";
+        actions[actions["marry"] = 9] = "marry";
+        actions[actions["bear_child"] = 10] = "bear_child";
     })(actions || (actions = {}));
     var object_descriptor;
     (function (object_descriptor) {
@@ -47,8 +49,11 @@ var sim;
         last_name = capitalizeFirstLetter(last_name);
         return first_name + " " + last_name;
     }
+    function get_random_whole_number(min, max) {
+        return Math.floor(Math.random() * (max - min)) + min;
+    }
     var Person = /** @class */ (function () {
-        function Person(name) {
+        function Person(name, birthday) {
             this.name = "Unnamed Person";
             this.age = 0;
             this.movement_speed = 1 + (Math.random() * 3);
@@ -57,7 +62,11 @@ var sim;
             this.thirst = 100;
             this.relationships = [];
             this.inventory = [];
+            this.memory = [];
+            this.current_action = actions.idle;
             this.name = name;
+            this.birthday = birthday;
+            console.log("A person by the name of " + this.name + " now exists.");
         }
         Person.prototype.body_functions = function (intensity) {
             this.hunger - intensity;
@@ -92,6 +101,10 @@ var sim;
                     break;
                 case actions.build:
                     break;
+                case actions.bear_child:
+                    break;
+                case actions.marry:
+                    break;
             }
             this.body_functions(action_intensity);
         };
@@ -114,16 +127,23 @@ var sim;
         }
         return Plant;
     }());
-    console.log(create_name());
-    console.log(create_name());
-    console.log(create_name());
-    console.log(create_name());
-    console.log(create_name());
-    console.log(create_name());
-    console.log(create_name());
-    console.log(create_name());
-    console.log(create_name());
-    console.log(create_name());
-    console.log(create_name());
-    console.log(create_name());
+    var Memory = /** @class */ (function () {
+        function Memory() {
+        }
+        return Memory;
+    }());
+    var World = /** @class */ (function () {
+        function World() {
+            this.people = [];
+            this.objects = [];
+            this.plants = [];
+            this.name = create_name();
+            console.log("Somehow, somewhere, a world created itself. It is called " + this.name + " by those who inhabit it.");
+            for (var i = 0; i < get_random_whole_number(10, 30); i++) {
+                this.people.push(new Person(create_name(), new Date(Date.now())));
+            }
+        }
+        return World;
+    }());
+    var world = new World();
 })(sim || (sim = {}));
