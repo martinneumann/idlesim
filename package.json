@@ -1,0 +1,30 @@
+{
+  "name": "idlesim",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "test",
+    "build": "tsc ./src/index.ts --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/martinneumann/idlesim.git"
+  },
+  "keywords": [
+    "idle",
+    "simulation"
+  ],
+  "author": "Martin Neumann",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/martinneumann/idlesim/issues"
+  },
+  "homepage": "https://github.com/martinneumann/idlesim#readme",
+  "dependencies": {
+    "typescript": "^4.3.4"
+  },
+  "devDependencies": {
+    "@types/node": "^15.12.4"
+  }
+}
