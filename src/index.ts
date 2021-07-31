@@ -247,6 +247,7 @@ namespace sim {
 			if (object.belongsTo != "") {
 				console.log(`${this.name} tried to pick up ${object.name} from ${object.belongsTo}... but decided not to steal.`);
 			} else {
+				object.belongsTo = this.name;
 				this.inventory.push(object);
 				console.log(`${this.name} picked up ${object.name}.`);
 			}
@@ -255,12 +256,6 @@ namespace sim {
 		perceive(perception_value: number) {
 			this.current_perceptions = Array<WorldObject>();
 			this.current_perceptions = get_nearby_objects(this.position, perception_value);
-
-			// console log all perceptions
-			for (let i = 0; i < this.current_perceptions.length; i++) {
-				console.log(`${this.name} sees a ${this.current_perceptions[i].name}.`);
-			}
-
 		}
 
 		get_status() {
@@ -292,10 +287,11 @@ namespace sim {
 						this.thirst -= 60;
 						console.log(`${this.name} drinks the ${drink.name}.`);
 						this.inventory.splice(this.inventory.findIndex(x => x == drink), 1);
+						world.objects.splice(world.objects.findIndex(x => x == food), 1);
 						break;
 					} else {
 
-						let nearby_object = this.current_perceptions.find(x => x.descriptors.find(y => y === object_descriptor.drinkable));
+						let nearby_object = this.current_perceptions.find(x => x.descriptors.find(y => y === object_descriptor.drinkable) && x.belongsTo == "");
 
 						if (nearby_object) {
 							if (is_in_reach(nearby_object.position, this.position, this.skills.reach)) {
@@ -318,9 +314,10 @@ namespace sim {
 						this.hunger -= 60;
 						console.log(`${this.name} eats the ${food.name}.`);
 						this.inventory.splice(this.inventory.findIndex(x => x == food), 1);
+						world.objects.splice(world.objects.findIndex(x => x == food), 1);
 						break;
 					} else {
-						let nearby_object = this.current_perceptions.find(x => x.descriptors.find(y => y === object_descriptor.edible));
+						let nearby_object = this.current_perceptions.find(x => x.descriptors.find(y => y === object_descriptor.edible) && x.belongsTo == "");
 						if (nearby_object) {
 							if (is_in_reach(nearby_object.position, this.position, this.skills.reach)) {
 								this.pick_up(nearby_object);
@@ -413,9 +410,6 @@ namespace sim {
 					if (!person.do_action()) {
 						console.log(`${person.name} has been found dead.`);
 						this.people.splice(this.people.findIndex(x => x == person), 1);
-					} else {
-						console.log(`${person.name} is still alive and at position: ${person.position.x}, ${person.position.y}.`);
-						person.get_status();
 					}
 				});
 
@@ -426,18 +420,16 @@ namespace sim {
 				if (this.objects.length < 200) {
 					for (let i = 0; i < get_random_whole_number(1, 15); i++) {
 						if (decideWithProbability(50)) {
-							console.log(`A drink has been born in the world.`);
 							this.objects.push(new WorldObject(natural_drinks[get_random_whole_number(0, natural_drinks.length)], [object_descriptor.drinkable], { x: get_random_whole_number(0, this.width), y: get_random_whole_number(0, this.height), z: 0 }, ""));
 						}
 					}
 					for (let i = 0; i < get_random_whole_number(1, 15); i++) {
 						if (decideWithProbability(50)) {
-							console.log(`A plant has been born in the world.`);
 							this.objects.push(new WorldObject(natural_fruit_forageable[get_random_whole_number(0, natural_fruit_forageable.length)], [object_descriptor.edible], { x: get_random_whole_number(0, this.width), y: get_random_whole_number(0, this.height), z: 0 }, ""));
 						}
 					}
 				} else {
-					console.log(`The world is full of objects.`);
+					console.log(`The world is full of objects, ${this.objects.length} in total.`);
 				}
 
 				/**
