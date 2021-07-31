@@ -249,6 +249,7 @@ namespace sim {
 			} else {
 				object.belongsTo = this.name;
 				this.inventory.push(object);
+				world.objects.splice(world.objects.indexOf(object), 1);
 				console.log(`${this.name} picked up ${object.name}.`);
 			}
 		}
@@ -287,7 +288,6 @@ namespace sim {
 						this.thirst -= 60;
 						console.log(`${this.name} drinks the ${drink.name}.`);
 						this.inventory.splice(this.inventory.findIndex(x => x == drink), 1);
-						world.objects.splice(world.objects.findIndex(x => x == food), 1);
 						break;
 					} else {
 
@@ -314,7 +314,6 @@ namespace sim {
 						this.hunger -= 60;
 						console.log(`${this.name} eats the ${food.name}.`);
 						this.inventory.splice(this.inventory.findIndex(x => x == food), 1);
-						world.objects.splice(world.objects.findIndex(x => x == food), 1);
 						break;
 					} else {
 						let nearby_object = this.current_perceptions.find(x => x.descriptors.find(y => y === object_descriptor.edible) && x.belongsTo == "");
