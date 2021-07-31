@@ -143,13 +143,55 @@ namespace sim {
 		return Math.floor(Math.random() * (max - min)) + min
 	}
 
+	function is_in_reach(position1: position, position2: position, distance: number): boolean {
+		return Math.abs(position1.x - position2.x) <= distance && Math.abs(position1.y - position2.y) <= distance && Math.abs(position1.z - position2.z) <= distance
+	}
+
+	function get_nearby_objects(position: position, radius: number): WorldObject[] {
+		let objects = []
+		for (let i = 0; i < world.objects.length; i++) {
+			let obj = world.objects[i]
+			let distance = Math.sqrt(Math.pow(obj.position.x - position.x, 2) + Math.pow(obj.position.y - position.y, 2) + Math.pow(obj.position.z - position.z, 2))
+			if (distance < radius) {
+				objects.push(obj)
+			}
+		}
+		return objects
+	}
+
+	function get_random_position() {
+		return {
+			x: get_random_whole_number(0, world.width),
+			y: get_random_whole_number(0, world.height),
+			z: get_random_whole_number(0, world.z_depth)
+		}
+	}
+
+	function get_nearby_people(position: position, radius: number): Person[] {
+		let people = []
+		for (let i = 0; i < world.people.length; i++) {
+			let person = world.people[i]
+			let distance = Math.sqrt(Math.pow(person.position.x - position.x, 2) + Math.pow(person.position.y - position.y, 2) + Math.pow(person.position.z - position.z, 2))
+			if (distance < radius) {
+				people.push(person)
+			}
+		}
+		return people
+	}
+
+	class Skills {
+		perception: number = 30
+		speed: number = 50
+		reach: number = 5
+	}
+
 	class Person {
 		name: string = "Unnamed Person";
+		skills: Skills = new Skills();
 		age: number = 0;
-		movement_speed = 1 + (Math.random() * 3);
 		position: position = { x: 1, y: 1, z: 1 };
-		hunger: number = 100;
-		thirst: number = 100;
+		hunger: number = 0;
+		thirst: number = 0;
 
 		birthday: Date;
 
@@ -157,7 +199,7 @@ namespace sim {
 		inventory: WorldObject[] = [];
 		memory: Memory[] = [];
 
-		current_perceptions: any[] = [];
+		current_perceptions: WorldObject[] = [];
 		intention: actions = actions.idle;
 		current_action: actions = actions.idle;
 
@@ -169,68 +211,131 @@ namespace sim {
 		}
 
 		body_functions(intensity: number): boolean {
-			if (this.hunger <= 0)  {
+			if (this.hunger >= 100) {
 				console.log(`${this.name} died of starvation.`);
 				return false;
+			} else if (this.thirst >= 100) {
+				console.log(`${this.name} died of thirst.`);
+				return false;
 			} else {
-			console.log(`${this.name} lost ${intensity} energy.`);
-			this.hunger -= intensity;
-			this.thirst -= intensity;
-			return true;
+				console.log(`${this.name} lost ${intensity} energy.`);
+				this.hunger += intensity;
+				this.thirst += intensity;
+				return true;
 			}
 		}
 
+		print_intention() {
+			console.log(`${this.name} wants to ${this.intention}.`);
+		}
+
 		decide() {
-			if (this.thirst < 50) {
+			if (this.thirst > 50) {
 				console.log(`${this.name} is thirsty.`);
-				this.intention = actions.eat;
+				this.intention = actions.drink;
 				return;
 			}
-			if (this.hunger < 50) {
+			if (this.hunger > 50) {
 				console.log(`${this.name} is hungry.`);
 				this.intention = actions.eat;
 				return;
 			}
+			this.intention = actions.idle;
+		}
+
+		pick_up(object: WorldObject) {
+			if (object.belongsTo != "") {
+				console.log(`${this.name} tried to pick up ${object.name} from ${object.belongsTo}... but decided not to steal.`);
+			} else {
+				this.inventory.push(object);
+				console.log(`${this.name} picked up ${object.name}.`);
+			}
+		}
+
+		perceive(perception_value: number) {
+			this.current_perceptions = Array<WorldObject>();
+			this.current_perceptions = get_nearby_objects(this.position, perception_value);
+
+			// console log all perceptions
+			for (let i = 0; i < this.current_perceptions.length; i++) {
+				console.log(`${this.name} sees a ${this.current_perceptions[i].name}.`);
+			}
 
 		}
 
-		perceive(objects: object[], people: Person[], plants: Plant[]) {
-			this.current_perceptions.push(objects, people, plants);
+		get_status() {
+			console.log(`${this.name} is ${this.hunger}% hungry and ${this.thirst}% thirsty.`);
 		}
 
-		get_status(person: Person) {
-			console.log(`${person.name} is ${100 - person.hunger}% hungry and ${100 - person.thirst}% thirsty.`);
+		move_towards(target: position, speed: number) {
+			let distance = Math.sqrt(Math.pow(this.position.x - target.x, 2) + Math.pow(this.position.y - target.y, 2) + Math.pow(this.position.z - target.z, 2));
+			let direction = { x: this.position.x - target.x, y: this.position.y - target.y, z: this.position.z - target.z };
+			let direction_length = Math.sqrt(Math.pow(direction.x, 2) + Math.pow(direction.y, 2) + Math.pow(direction.z, 2));
+			let direction_unit = { x: direction.x / direction_length, y: direction.y / direction_length, z: direction.z / direction_length };
+			if (distance < speed) {
+				this.position = target;
+			} else {
+				let new_position = { x: this.position.x + (direction_unit.x * this.skills.speed), y: this.position.y + (direction_unit.y * this.skills.speed), z: this.position.z + (direction_unit.z * this.skills.speed) };
+				this.position = new_position;
+			}
 		}
 
 		do_action(): boolean {
-			let action_intensity = 10;
+			let action_intensity = 1;
 			switch (this.intention) {
 				case actions.idle:
 					console.log(`${this.name} decides to do nothing in particular for a while.`)
-					this.get_status(this);
 					break;
 				case actions.drink:
 					let drink = this.inventory.find(x => x.descriptors.find(y => y === object_descriptor.drinkable));
 					if (drink) {
-						this.thirst -= 30;
-						action_intensity = 0;
-						console.log(`${name} drinks the ${drink.name}.`);
+						this.thirst -= 60;
+						console.log(`${this.name} drinks the ${drink.name}.`);
 						this.inventory.splice(this.inventory.findIndex(x => x == drink), 1);
+						break;
 					} else {
-						console.log(`${this.name} tried to drink, but cannot find anything drinkable.`);
+
+						let nearby_object = this.current_perceptions.find(x => x.descriptors.find(y => y === object_descriptor.drinkable));
+
+						if (nearby_object) {
+							if (is_in_reach(nearby_object.position, this.position, this.skills.reach)) {
+								this.pick_up(nearby_object);
+								break;
+							} else {
+								console.log(`${this.name} is walking towards a ${nearby_object.name}`);
+								this.move_towards(nearby_object.position, this.skills.speed);
+								break;
+							}
+						} else {
+							console.log(`${this.name} is trying to find something to drink.`);
+							this.move_towards(get_random_position(), this.skills.speed);
+							break;
+						}
 					}
-					break;
 				case actions.eat:
-					let food = this.inventory.find(x => x.descriptors.find(y => y === object_descriptor.drinkable));
+					let food = this.inventory.find(x => x.descriptors.find(y => y === object_descriptor.edible));
 					if (food) {
-						this.hunger -= 30;
-						action_intensity = 0;
-						console.log(`${name} eats the ${food.name}.`);
+						this.hunger -= 60;
+						console.log(`${this.name} eats the ${food.name}.`);
 						this.inventory.splice(this.inventory.findIndex(x => x == food), 1);
+						break;
 					} else {
-						console.log(`${this.name} tried to eat, but cannot find anything edible.`);
+						let nearby_object = this.current_perceptions.find(x => x.descriptors.find(y => y === object_descriptor.edible));
+						if (nearby_object) {
+							if (is_in_reach(nearby_object.position, this.position, this.skills.reach)) {
+								this.pick_up(nearby_object);
+								break;
+							} else {
+								console.log(`${this.name} is walking towards a ${nearby_object.name}`);
+								this.move_towards(nearby_object.position, this.skills.speed);
+								break;
+							}
+						} else {
+							console.log(`${this.name} is trying to find something to eat.`);
+							this.move_towards(get_random_position(), this.skills.speed);
+							break;
+						}
 					}
-					break;
 					break;
 				case actions.walk:
 					break;
@@ -255,14 +360,16 @@ namespace sim {
 	}
 
 	class WorldObject {
-		constructor(name: string, descriptors: object_descriptor[], pos: position) {
+		constructor(name: string, descriptors: object_descriptor[], pos: position, belongsTo: string) {
 			this.name = name;
 			this.descriptors = descriptors;
 			this.position = pos;
+			this.belongsTo = belongsTo;
 		}
 		name: string = "";
 		descriptors: object_descriptor[] = [];
 		position: position = { x: 1, y: 1, z: 1 };
+		belongsTo: string = "";
 	}
 
 	class Plant {
@@ -275,6 +382,9 @@ namespace sim {
 
 	class World {
 		name: string;
+		width: number = 100;
+		height: number = 100;
+		z_depth: number = 100;
 		people: Person[] = [];
 		objects: WorldObject[] = [];
 		plants: Plant[] = [];
@@ -282,8 +392,9 @@ namespace sim {
 		constructor() {
 			this.name = create_name();
 			console.log(`Somewhere, a world created itself. It is called ${this.name} by those who inhabit it.`)
+
 			for (let i = 0; i < get_random_whole_number(10, 30); i++) {
-				this.people.push(new Person(create_name(), new Date(Date.now()), { x: 1, y: 1, z: 1 }));
+				this.people.push(new Person(create_name(), new Date(Date.now()), { x: get_random_whole_number(0, this.width), y: get_random_whole_number(0, this.height), z: 0 }));
 			}
 
 			this.simulation_loop();
@@ -291,38 +402,55 @@ namespace sim {
 
 		simulation_loop() {
 			console.log(`Time has started to affect the world.`)
-			timer(10000, 10000).subscribe(() => {
+			const sim_timer = timer(1000, 1000).subscribe(() => {
 
 				/**
 				 * People actions
 				 **/
 				this.people.forEach(person => {
-					person.perceive(this.objects, this.people, this.plants);
+					person.perceive(person.skills.perception);
 					person.decide();
 					if (!person.do_action()) {
 						console.log(`${person.name} has been found dead.`);
 						this.people.splice(this.people.findIndex(x => x == person), 1);
 					} else {
 						console.log(`${person.name} is still alive and at position: ${person.position.x}, ${person.position.y}.`);
+						person.get_status();
+					}
 				});
 
 				/**
 				 * World actions
 				 **/
-				for (let i = 0; i < get_random_whole_number(1, 5); i++) {
-					if (decideWithProbability(50)) {
-						this.objects.push(new WorldObject(natural_drinks[get_random_whole_number(0, natural_drinks.length)], [object_descriptor.drinkable], { x: get_random_whole_number(0, 30), y: get_random_whole_number(0, 30), z: get_random_whole_number(0, 30) }));
+
+				if (this.objects.length < 200) {
+					for (let i = 0; i < get_random_whole_number(1, 15); i++) {
+						if (decideWithProbability(50)) {
+							console.log(`A drink has been born in the world.`);
+							this.objects.push(new WorldObject(natural_drinks[get_random_whole_number(0, natural_drinks.length)], [object_descriptor.drinkable], { x: get_random_whole_number(0, this.width), y: get_random_whole_number(0, this.height), z: 0 }, ""));
+						}
 					}
+					for (let i = 0; i < get_random_whole_number(1, 15); i++) {
+						if (decideWithProbability(50)) {
+							console.log(`A plant has been born in the world.`);
+							this.objects.push(new WorldObject(natural_fruit_forageable[get_random_whole_number(0, natural_fruit_forageable.length)], [object_descriptor.edible], { x: get_random_whole_number(0, this.width), y: get_random_whole_number(0, this.height), z: 0 }, ""));
+						}
+					}
+				} else {
+					console.log(`The world is full of objects.`);
 				}
 
 				/**
 				 * Summary
 				 **/
-				console.log(`The world now contains:`);
-				this.objects.forEach(obj => {
-					console.log(`${obj.name} at ${obj.position.x}, ${obj.position.y}, ${obj.position.z}`);
-				});
 				console.log(`The world has ${this.people.length} people in it.`);
+				if (this.people.length === 0) {
+					console.log(`The world has no more people in it.`);
+					console.log(`The world has ended.`);
+					sim_timer.unsubscribe();
+					return;
+				}
+
 				console.log(`Another hour has passed.`);
 			});
 		}
