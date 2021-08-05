@@ -1,5 +1,6 @@
 import { timer } from 'rxjs';
-import { throwIfEmpty } from 'rxjs/operators';
+import { graphics } from './graphics';	
+
 namespace sim {
 	enum actions {
 		idle = 1,
@@ -14,6 +15,7 @@ namespace sim {
 		bear_child = 10,
 		sleep = 11,
 		search = 12,
+		forage = 13,
 	}
 
 	const natural_drinks = [
@@ -201,6 +203,7 @@ namespace sim {
 
 		current_perceptions: WorldObject[] = [];
 		intention: actions = actions.idle;
+		current_movement_goal: position = this.position;
 		current_action: actions = actions.idle;
 
 		constructor(name: string, birthday: Date, position: position) {
@@ -212,13 +215,12 @@ namespace sim {
 
 		body_functions(intensity: number): boolean {
 			if (this.hunger >= 100) {
-				console.log(`${this.name} died of starvation.`);
+				console.log(`${this.name} died from starvation.`);
 				return false;
 			} else if (this.thirst >= 100) {
-				console.log(`${this.name} died of thirst.`);
+				console.log(`${this.name} died from thirst.`);
 				return false;
 			} else {
-				console.log(`${this.name} lost ${intensity} energy.`);
 				this.hunger += intensity;
 				this.thirst += intensity;
 				return true;
@@ -230,14 +232,19 @@ namespace sim {
 		}
 
 		decide() {
-			if (this.thirst > 50) {
+			if (this.thirst > 50 && this.intention !== actions.drink) {
 				console.log(`${this.name} is thirsty.`);
 				this.intention = actions.drink;
 				return;
 			}
-			if (this.hunger > 50) {
+			if (this.hunger > 50 && this.intention !== actions.eat) {
 				console.log(`${this.name} is hungry.`);
 				this.intention = actions.eat;
+				return;
+			}
+			if (this.inventory.length <= 10 && this.intention !== actions.forage) {
+				console.log(`${this.name} still has room in their backpack decides to go foraging for food and drink.`);
+				this.intention = actions.forage;
 				return;
 			}
 			this.intention = actions.idle;
@@ -255,12 +262,36 @@ namespace sim {
 		}
 
 		perceive(perception_value: number) {
+			console.log(`${this.name} has ${this.inventory.length} items in their backpack.`);
 			this.current_perceptions = Array<WorldObject>();
 			this.current_perceptions = get_nearby_objects(this.position, perception_value);
 		}
 
 		get_status() {
 			console.log(`${this.name} is ${this.hunger}% hungry and ${this.thirst}% thirsty.`);
+		}
+
+		set_random_current_goal_position(check_if_already_set: boolean) {
+			if (check_if_already_set) {
+				if (this.position !== this.current_movement_goal) {
+					return;
+				}
+			} 
+			console.log(`${this.name} changed their path in order to ${this.intention}`);
+			this.current_movement_goal = get_random_position()
+		}
+
+		set_current_goal_position(position: position) {
+			this.current_movement_goal = position;
+		}
+
+		check_if_goal_position_reached(): boolean {
+			if (this.position === this.current_movement_goal) {
+				console.log(`${this.name} has reached their destination after a long trek and is now resting.`);
+				this.intention = actions.idle;
+				return true;
+			}
+			return false;
 		}
 
 		move_towards(target: position, speed: number) {
@@ -274,6 +305,10 @@ namespace sim {
 				let new_position = { x: this.position.x + (direction_unit.x * this.skills.speed), y: this.position.y + (direction_unit.y * this.skills.speed), z: this.position.z + (direction_unit.z * this.skills.speed) };
 				this.position = new_position;
 			}
+		}
+
+		check_for_free_nearby_object(descriptor: object_descriptor[]): WorldObject | undefined {
+			return this.current_perceptions.find(x => x.descriptors.find(y => y === descriptor.find(x => x === y)) && x.belongsTo == "");
 		}
 
 		do_action(): boolean {
@@ -291,8 +326,7 @@ namespace sim {
 						break;
 					} else {
 
-						let nearby_object = this.current_perceptions.find(x => x.descriptors.find(y => y === object_descriptor.drinkable) && x.belongsTo == "");
-
+						let nearby_object = this.check_for_free_nearby_object([object_descriptor.drinkable]);
 						if (nearby_object) {
 							if (is_in_reach(nearby_object.position, this.position, this.skills.reach)) {
 								this.pick_up(nearby_object);
@@ -304,7 +338,8 @@ namespace sim {
 							}
 						} else {
 							console.log(`${this.name} is trying to find something to drink.`);
-							this.move_towards(get_random_position(), this.skills.speed);
+							this.set_random_current_goal_position(this.check_if_goal_position_reached());
+							this.move_towards(this.current_movement_goal, this.skills.speed);
 							break;
 						}
 					}
@@ -316,7 +351,7 @@ namespace sim {
 						this.inventory.splice(this.inventory.findIndex(x => x == food), 1);
 						break;
 					} else {
-						let nearby_object = this.current_perceptions.find(x => x.descriptors.find(y => y === object_descriptor.edible) && x.belongsTo == "");
+						let nearby_object = this.check_for_free_nearby_object([object_descriptor.edible]);
 						if (nearby_object) {
 							if (is_in_reach(nearby_object.position, this.position, this.skills.reach)) {
 								this.pick_up(nearby_object);
@@ -328,7 +363,8 @@ namespace sim {
 							}
 						} else {
 							console.log(`${this.name} is trying to find something to eat.`);
-							this.move_towards(get_random_position(), this.skills.speed);
+							this.set_random_current_goal_position(this.check_if_goal_position_reached());
+							this.move_towards(this.current_movement_goal, this.skills.speed);
 							break;
 						}
 					}
@@ -344,6 +380,24 @@ namespace sim {
 				case actions.bear_child:
 					break;
 				case actions.marry:
+					break;
+				case actions.forage:
+					let nearby_object = this.check_for_free_nearby_object([object_descriptor.edible, object_descriptor.drinkable]);
+						if (nearby_object) {
+							if (is_in_reach(nearby_object.position, this.position, this.skills.reach)) {
+								this.pick_up(nearby_object);
+								break;
+							} else {
+								console.log(`${this.name} is walking towards a ${nearby_object.name}`);
+								this.move_towards(nearby_object.position, this.skills.speed);
+								break;
+							}
+						} else {
+							console.log(`${this.name} is foraging.`);
+							this.set_random_current_goal_position(this.check_if_goal_position_reached());
+							this.move_towards(this.current_movement_goal, this.skills.speed);
+							break;
+						}
 					break;
 			}
 
@@ -385,7 +439,7 @@ namespace sim {
 		objects: WorldObject[] = [];
 		plants: Plant[] = [];
 
-		constructor() {
+		constructor(graphics: graphics) {
 			this.name = create_name();
 			console.log(`Somewhere, a world created itself. It is called ${this.name} by those who inhabit it.`)
 
@@ -415,7 +469,6 @@ namespace sim {
 				/**
 				 * World actions
 				 **/
-
 				if (this.objects.length < 200) {
 					for (let i = 0; i < get_random_whole_number(1, 15); i++) {
 						if (decideWithProbability(50)) {
@@ -447,5 +500,5 @@ namespace sim {
 		}
 	}
 
-	const world = new World();
+	const world = new World(new graphics());
 }
