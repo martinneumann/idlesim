@@ -171,7 +171,7 @@ namespace sim {
 		return {
 			x: get_random_whole_number(100, world.width - 100),
 			y: get_random_whole_number(100, world.height - 100),
-			z: 0,
+			z: 1,
 		}
 	}
 
@@ -209,7 +209,7 @@ namespace sim {
 
 		current_perceptions: WorldObject[] = [];
 		intention: actions = actions.idle;
-		current_movement_goal: position = { x: 0, y: 0, z: 0 };
+		current_movement_goal: position = { x: 1, y: 1, z: 1 };
 		current_action: actions = actions.idle;
 
 		constructor(name: string, birthday: Date, position: position) {
@@ -285,31 +285,34 @@ namespace sim {
 					return;
 				}
 			}
-			console.log(`${this.name} changed their path in order to ${actions[this.intention]}`);
+			console.log(`${this.name} changed their path in order to ${actions[this.intention]}.`);
 			this.current_movement_goal = get_random_position_2d()
 			console.log(`${this.name} is now moving to ${this.current_movement_goal.x}, ${this.current_movement_goal.y}`);
 		}
 
 		set_center_as_goal_position() {
-			console.log(`${this.name} changed their path in order to ${actions[this.intention]}`);
-			this.current_movement_goal = { x: world.width / 2, y: world.height / 2, z: 0 }
+			console.log(`${this.name} changed their path in order to ${actions[this.intention]} to the center.`);
+			this.current_movement_goal = { x: world.width / 2, y: world.height / 2, z: 1 }
 		}
 
 		check_if_boundaries_are_reached() {
 			// Checks if the person is outside the boundaries of the world
-			if (this.position.x < 0 || this.position.x > world.width || this.position.y < 0 || this.position.y > world.height || this.position.z < 0 || this.position.z > world.z_depth) {
+			if (this.position.x <= 0.0 || this.position.x >= world.width ||
+				this.position.y <= 0.0 || this.position.y >= world.height ||
+				this.position.z <= 0.0 || this.position.z >= world.z_depth) {
+				console.log(`${this.name} has left the world.`);
 				// Move the person to the opposite side of the world
-				if (this.position.x < 50) {
-					this.position.x = world.width - 100;
+				if (this.position.x <= 0.0) {
+					this.position.x = world.width - 1;
 				}
-				if (this.position.x > world.width - 50) {
-					this.position.x = 100;
+				if (this.position.x >= world.width) {
+					this.position.x = 1.0;
 				}
-				if (this.position.y < 50) {
-					this.position.y = world.height - 100;
+				if (this.position.y <= 0.0) {
+					this.position.y = world.height - 1;
 				}
-				if (this.position.y > world.height - 50) {
-					this.position.y = 100;
+				if (this.position.y >= world.height) {
+					this.position.y = 1.0;
 				}
 			}
 		}
@@ -321,20 +324,27 @@ namespace sim {
 		check_if_goal_position_reached(): boolean {
 			if (this.position === this.current_movement_goal) {
 				console.log(`${this.name} has reached their destination after a long trek and is now resting.`);
-				this.intention = actions.idle;
 				return true;
 			}
 			return false;
 		}
 
 		move_towards(target: position, speed: number) {
-			let distance = Math.sqrt(Math.pow(this.position.x - target.x, 2) +
-				Math.pow(this.position.y - target.y, 2) +
-				Math.pow(this.position.z - target.z, 2));
+			let distance = Math.sqrt(Math.pow(target.x - this.position.x, 2) +
+				Math.pow(target.y - this.position.y, 2) +
+				Math.pow(target.z - this.position.z, 2));
 
-			let direction = { x: this.position.x - target.x, y: this.position.y - target.y, z: this.position.z - target.z };
+			let direction = { x: target.x - this.position.x, y: target.y - this.position.y, z: target.z - this.position.z};
 			let direction_length = Math.sqrt(Math.pow(direction.x, 2) + Math.pow(direction.y, 2) + Math.pow(direction.z, 2));
 			let direction_unit = { x: direction.x / direction_length, y: direction.y / direction_length, z: direction.z / direction_length };
+
+			console.log(`${this.name} is moving towards ${target.x}, ${target.y}, ${target.z} at ${speed} units per second.`);
+			console.log(`${this.name} is currently at ${this.position.x}, ${this.position.y}, ${this.position.z}.`);
+			console.log(`${this.name} current direction is ${JSON.stringify(direction)}`)
+			console.log(`${this.name} is currently moving towards ${this.current_movement_goal.x}, ${this.current_movement_goal.y}, ${this.current_movement_goal.z}.`);
+			console.log(`${this.name} is currently moving towards ${direction_unit.x}, ${direction_unit.y}, ${direction_unit.z}.`);
+			console.log(`${this.name} is currently ${distance} units away from their destination.`);
+			console.log(`${this.name} direction unit is ${JSON.stringify(direction_unit)}.`)
 
 			if (distance < speed) {
 				this.position = target;
@@ -352,9 +362,11 @@ namespace sim {
 			let action_intensity = 1;
 			switch (this.intention) {
 				case actions.idle:
+					this.current_action = actions.idle;
 					console.log(`${this.name} decides to do nothing in particular for a while.`)
 					break;
 				case actions.drink:
+					this.current_action = actions.drink;
 					let drink = this.inventory.find(x => x.descriptors.find(y => y === object_descriptor.drinkable));
 					if (drink) {
 						this.thirst -= 60;
@@ -380,6 +392,7 @@ namespace sim {
 						}
 					}
 				case actions.eat:
+					this.current_action = actions.eat;
 					let food = this.inventory.find(x => x.descriptors.find(y => y === object_descriptor.edible));
 					if (food) {
 						this.hunger -= 60;
@@ -418,6 +431,7 @@ namespace sim {
 				case actions.marry:
 					break;
 				case actions.forage:
+					this.current_action = actions.forage;
 					let nearby_object = this.check_for_free_nearby_object([object_descriptor.edible, object_descriptor.drinkable]);
 					if (nearby_object) {
 						if (is_in_reach(nearby_object.position, this.position, this.skills.reach)) {
@@ -430,9 +444,7 @@ namespace sim {
 						}
 					} else {
 						console.log(`${this.name} is foraging.`);
-						if (this.current_movement_goal === { x: 0, y: 0, z: 0 }) {
-							this.set_random_current_goal_position(false);
-						}
+						this.set_random_current_goal_position(false);
 						this.move_towards(this.current_movement_goal, this.skills.speed);
 						break;
 					}
@@ -470,9 +482,9 @@ namespace sim {
 
 	class World {
 		name: string;
-		width: number = 400;
-		height: number = 400;
-		z_depth: number = 100;
+		width: number = 700.0;
+		height: number = 700.0;
+		z_depth: number = 100.0;
 		people: Person[] = [];
 		objects: WorldObject[] = [];
 		plants: Plant[] = [];
@@ -515,15 +527,14 @@ namespace sim {
 			p5.mouseWheel = () => {
 				console.log(`Mouse wheel at ${p5.mouseX}, ${p5.mouseY}`);
 			}
-
 		}
 
 		graphics_loop() {
 			this.p5.clear();
 			const people_circles: MyCircle[] = [];
 			this.people.forEach(person => {
-				people_circles.push(new MyCircle(this.p5, this.p5.createVector(person.position.x, person.position.y, person.position.z), 5, 255, 100, 0));
-				people_circles.push(new MyCircle(this.p5, this.p5.createVector(person.position.x, person.position.y, person.position.z), person.skills.perception, 100, 100, 100, 100));
+				people_circles.push(new MyCircle(this.p5, this.p5.createVector(person.position.x, person.position.y, person.position.z), 5, 255, 100, 0, person.name));
+				people_circles.push(new MyCircle(this.p5, this.p5.createVector(person.position.x, person.position.y, person.position.z), person.skills.perception, 100, 100, 100, undefined, 100));
 			});
 			const object_circles: MyCircle[] = [];
 			this.objects.forEach(object => {
@@ -542,10 +553,14 @@ namespace sim {
 				/**
 				 * People actions
 				 **/
-				
+
 				this.people.forEach(person => {
 					person.check_if_boundaries_are_reached();
+					if (person.check_if_goal_position_reached()) {
+						person.set_random_current_goal_position(true);
+					}
 					console.log(`${person.name} is ${actions[person.current_action]}ing towards ${JSON.stringify(person.current_movement_goal)}`);
+					console.log(`${person.name} current position is ${person.position.x}, ${person.position.y}, ${person.position.z}.`)
 					person.perceive(person.skills.perception);
 					person.decide();
 					if (!person.do_action()) {
