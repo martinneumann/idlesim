@@ -165,11 +165,11 @@ namespace sim {
 		return objects
 	}
 
-	function get_random_position() {
+	function get_random_position_2d() {
 		return {
-			x: get_random_whole_number(0, world.width),
-			y: get_random_whole_number(0, world.height),
-			z: get_random_whole_number(0, world.z_depth)
+			x: get_random_whole_number(100, world.width - 100),
+			y: get_random_whole_number(100, world.height - 100),
+			z: 0,
 		}
 	}
 
@@ -281,8 +281,32 @@ namespace sim {
 					return;
 				}
 			}
-			console.log(`${this.name} changed their path in order to ${this.intention.toString()}`);
-			this.current_movement_goal = get_random_position()
+			console.log(`${this.name} changed their path in order to ${actions[this.intention]}`);
+			this.current_movement_goal = get_random_position_2d()
+		}
+
+		set_center_as_goal_position() {
+			console.log(`${this.name} changed their path in order to ${actions[this.intention]}`);
+			this.current_movement_goal = { x: world.width / 2, y: world.height / 2, z: 0 }
+		}
+
+		check_if_boundaries_are_reached() {
+			// Checks if the person is outside the boundaries of the world
+			if (this.position.x < 0 || this.position.x > world.width || this.position.y < 0 || this.position.y > world.height || this.position.z < 0 || this.position.z > world.z_depth) {
+				// Move the person to the opposite side of the world
+				if (this.position.x < 0) {
+					this.position.x = world.width;
+				}
+				if (this.position.x > world.width) {
+					this.position.x = 0;
+				}
+				if (this.position.y < 0) {
+					this.position.y = world.height;
+				}
+				if (this.position.y > world.height) {
+					this.position.y = 0;
+				}
+			}
 		}
 
 		set_current_goal_position(position: position) {
@@ -342,7 +366,6 @@ namespace sim {
 							}
 						} else {
 							console.log(`${this.name} is trying to find something to drink.`);
-							this.set_random_current_goal_position(this.check_if_goal_position_reached());
 							this.move_towards(this.current_movement_goal, this.skills.speed);
 							break;
 						}
@@ -367,7 +390,6 @@ namespace sim {
 							}
 						} else {
 							console.log(`${this.name} is trying to find something to eat.`);
-							this.set_random_current_goal_position(this.check_if_goal_position_reached());
 							this.move_towards(this.current_movement_goal, this.skills.speed);
 							break;
 						}
@@ -398,7 +420,6 @@ namespace sim {
 						}
 					} else {
 						console.log(`${this.name} is foraging.`);
-						this.set_random_current_goal_position(this.check_if_goal_position_reached());
 						this.move_towards(this.current_movement_goal, this.skills.speed);
 						break;
 					}
@@ -436,8 +457,8 @@ namespace sim {
 
 	class World {
 		name: string;
-		width: number = 100;
-		height: number = 100;
+		width: number = 800;
+		height: number = 800;
 		z_depth: number = 100;
 		people: Person[] = [];
 		objects: WorldObject[] = [];
@@ -473,28 +494,27 @@ namespace sim {
 				// Configuring the canvas
 				p5.background("black");
 
-				this.people.forEach(person => {
-					myCircles.push(new MyCircle(this.p5, this.p5.createVector(person.position.x, person.position.y, person.position.z), 5));
-				});
 			};
 
-			// The sketch draw method
-			p5.draw = () => {
-				// DEMO: Let the circle instances draw themselves
-				myCircles.forEach(circle => circle.draw());
-			};
+			p5.mouseClicked = () => {
+				console.log(`Mouse clicked at ${p5.mouseX}, ${p5.mouseY}`);
+			}
+			p5.mouseWheel = () => {
+				console.log(`Mouse wheel at ${p5.mouseX}, ${p5.mouseY}`);
+			}
+
 		}
 
 		graphics_loop() {
-			console.log("Drawing graphics");
 			this.p5.clear();
 			const people_circles: MyCircle[] = [];
 			this.people.forEach(person => {
-				people_circles.push(new MyCircle(this.p5, this.p5.createVector(person.position.x, person.position.y, person.position.z), 5));
+				people_circles.push(new MyCircle(this.p5, this.p5.createVector(person.position.x, person.position.y, person.position.z), 5, 255, 100, 0));
+				people_circles.push(new MyCircle(this.p5, this.p5.createVector(person.position.x, person.position.y, person.position.z), person.skills.perception, 100, 100, 100, 100));
 			});
 			const object_circles: MyCircle[] = [];
 			this.objects.forEach(object => {
-				object_circles.push(new MyCircle(this.p5, this.p5.createVector(object.position.x, object.position.y, object.position.z), 3));
+				object_circles.push(new MyCircle(this.p5, this.p5.createVector(object.position.x, object.position.y, object.position.z), 3, 0, 0, 100));
 			});
 			this.p5.draw = () => {
 				people_circles.forEach(circle => circle.draw());
@@ -504,12 +524,14 @@ namespace sim {
 
 		simulation_loop() {
 			console.log(`Time has started to affect the world.`)
-			const sim_timer = timer(1000, 1000).subscribe(() => {
+			const sim_timer = timer(1000, 200).subscribe(() => {
 
 				/**
 				 * People actions
 				 **/
+				
 				this.people.forEach(person => {
+					person.check_if_boundaries_are_reached();
 					person.perceive(person.skills.perception);
 					person.decide();
 					if (!person.do_action()) {
