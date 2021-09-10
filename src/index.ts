@@ -146,7 +146,9 @@ namespace sim {
 	}
 
 	function get_random_whole_number(min: number, max: number) {
-		return Math.floor(Math.random() * (max - min)) + min
+		let returnval = Math.floor(Math.random() * (max - min)) + min;
+		console.log(`random number: ${returnval}`);
+		return returnval
 	}
 
 	function is_in_reach(position1: position, position2: position, distance: number): boolean {
@@ -207,7 +209,7 @@ namespace sim {
 
 		current_perceptions: WorldObject[] = [];
 		intention: actions = actions.idle;
-		current_movement_goal: position = this.position;
+		current_movement_goal: position = { x: 0, y: 0, z: 0 };
 		current_action: actions = actions.idle;
 
 		constructor(name: string, birthday: Date, position: position) {
@@ -262,6 +264,7 @@ namespace sim {
 				this.inventory.push(object);
 				world.objects.splice(world.objects.indexOf(object), 1);
 				console.log(`${this.name} picked up ${object.name}.`);
+				this.skills.perception += 1;
 			}
 		}
 
@@ -277,12 +280,14 @@ namespace sim {
 
 		set_random_current_goal_position(check_if_already_set: boolean) {
 			if (check_if_already_set) {
+				console.log(`${this.name} is already moving to a new position.`);
 				if (this.position !== this.current_movement_goal) {
 					return;
 				}
 			}
 			console.log(`${this.name} changed their path in order to ${actions[this.intention]}`);
 			this.current_movement_goal = get_random_position_2d()
+			console.log(`${this.name} is now moving to ${this.current_movement_goal.x}, ${this.current_movement_goal.y}`);
 		}
 
 		set_center_as_goal_position() {
@@ -294,17 +299,17 @@ namespace sim {
 			// Checks if the person is outside the boundaries of the world
 			if (this.position.x < 0 || this.position.x > world.width || this.position.y < 0 || this.position.y > world.height || this.position.z < 0 || this.position.z > world.z_depth) {
 				// Move the person to the opposite side of the world
-				if (this.position.x < 0) {
-					this.position.x = world.width;
+				if (this.position.x < 50) {
+					this.position.x = world.width - 100;
 				}
-				if (this.position.x > world.width) {
-					this.position.x = 0;
+				if (this.position.x > world.width - 50) {
+					this.position.x = 100;
 				}
-				if (this.position.y < 0) {
-					this.position.y = world.height;
+				if (this.position.y < 50) {
+					this.position.y = world.height - 100;
 				}
-				if (this.position.y > world.height) {
-					this.position.y = 0;
+				if (this.position.y > world.height - 50) {
+					this.position.y = 100;
 				}
 			}
 		}
@@ -323,10 +328,14 @@ namespace sim {
 		}
 
 		move_towards(target: position, speed: number) {
-			let distance = Math.sqrt(Math.pow(this.position.x - target.x, 2) + Math.pow(this.position.y - target.y, 2) + Math.pow(this.position.z - target.z, 2));
+			let distance = Math.sqrt(Math.pow(this.position.x - target.x, 2) +
+				Math.pow(this.position.y - target.y, 2) +
+				Math.pow(this.position.z - target.z, 2));
+
 			let direction = { x: this.position.x - target.x, y: this.position.y - target.y, z: this.position.z - target.z };
 			let direction_length = Math.sqrt(Math.pow(direction.x, 2) + Math.pow(direction.y, 2) + Math.pow(direction.z, 2));
 			let direction_unit = { x: direction.x / direction_length, y: direction.y / direction_length, z: direction.z / direction_length };
+
 			if (distance < speed) {
 				this.position = target;
 			} else {
@@ -375,6 +384,7 @@ namespace sim {
 					if (food) {
 						this.hunger -= 60;
 						console.log(`${this.name} eats the ${food.name}.`);
+						this.skills.speed += 1;
 						this.inventory.splice(this.inventory.findIndex(x => x == food), 1);
 						break;
 					} else {
@@ -420,6 +430,9 @@ namespace sim {
 						}
 					} else {
 						console.log(`${this.name} is foraging.`);
+						if (this.current_movement_goal === { x: 0, y: 0, z: 0 }) {
+							this.set_random_current_goal_position(false);
+						}
 						this.move_towards(this.current_movement_goal, this.skills.speed);
 						break;
 					}
@@ -457,8 +470,8 @@ namespace sim {
 
 	class World {
 		name: string;
-		width: number = 800;
-		height: number = 800;
+		width: number = 400;
+		height: number = 400;
 		z_depth: number = 100;
 		people: Person[] = [];
 		objects: WorldObject[] = [];
@@ -532,6 +545,7 @@ namespace sim {
 				
 				this.people.forEach(person => {
 					person.check_if_boundaries_are_reached();
+					console.log(`${person.name} is ${actions[person.current_action]}ing towards ${JSON.stringify(person.current_movement_goal)}`);
 					person.perceive(person.skills.perception);
 					person.decide();
 					if (!person.do_action()) {
@@ -543,15 +557,15 @@ namespace sim {
 				/**
 				 * World actions
 				 **/
-				if (this.objects.length < 200) {
+				if (this.objects.length < 10) {
 					for (let i = 0; i < get_random_whole_number(1, 15); i++) {
 						if (decideWithProbability(50)) {
-							this.objects.push(new WorldObject(natural_drinks[get_random_whole_number(0, natural_drinks.length)], [object_descriptor.drinkable], { x: get_random_whole_number(0, this.width), y: get_random_whole_number(0, this.height), z: 0 }, ""));
+							this.objects.push(new WorldObject(natural_drinks[get_random_whole_number(0, natural_drinks.length)], [object_descriptor.drinkable], { x: get_random_whole_number(150, this.width - 150), y: get_random_whole_number(150, this.height - 150), z: 0 }, ""));
 						}
 					}
 					for (let i = 0; i < get_random_whole_number(1, 15); i++) {
 						if (decideWithProbability(50)) {
-							this.objects.push(new WorldObject(natural_fruit_forageable[get_random_whole_number(0, natural_fruit_forageable.length)], [object_descriptor.edible], { x: get_random_whole_number(0, this.width), y: get_random_whole_number(0, this.height), z: 0 }, ""));
+							this.objects.push(new WorldObject(natural_fruit_forageable[get_random_whole_number(0, natural_fruit_forageable.length)], [object_descriptor.edible], { x: get_random_whole_number(150, this.width - 150), y: get_random_whole_number(150, this.height - 150), z: 0 }, ""));
 						}
 					}
 				} else {
