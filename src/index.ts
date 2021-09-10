@@ -1,23 +1,22 @@
 import { timer } from 'rxjs';
-import MyCircle from './graphics';	
+import MyCircle from './graphics';
 
-import P5 from "p5";
-import "p5/lib/addons/p5.dom";
-// import "p5/lib/addons/p5.sound";	// Include if needed
+import p5 from 'p5';
 
 // Creating the sketch itself
-const sketch = (p5: P5) => {
+const sketch = (p5: p5) => {
 	// DEMO: Prepare an array of MyCircle instances
 	const myCircles: MyCircle[] = [];
 
 	// The sketch setup method 
 	p5.setup = () => {
+		console.log('setup');
 		// Creating and positioning the canvas
-		const canvas = p5.createCanvas(200, 200);
+		const canvas = p5.createCanvas(800, 800);
 		canvas.parent("app");
 
 		// Configuring the canvas
-		p5.background("white");
+		p5.background("black");
 
 		// DEMO: Create three circles in the center of the canvas
 		for (let i = 1; i < 4; i++) {
@@ -34,9 +33,6 @@ const sketch = (p5: P5) => {
 		myCircles.forEach(circle => circle.draw());
 	};
 };
-
-new P5(sketch);
-
 
 namespace sim {
 	enum actions {
@@ -314,7 +310,7 @@ namespace sim {
 					return;
 				}
 			} 
-			console.log(`${this.name} changed their path in order to ${this.intention}`);
+			console.log(`${this.name} changed their path in order to ${this.intention.toString()}`);
 			this.current_movement_goal = get_random_position()
 		}
 
@@ -538,4 +534,5 @@ namespace sim {
 	}
 
 	const world = new World();
+	new p5(sketch);
 }
