@@ -3,36 +3,7 @@ import MyCircle from './graphics';
 
 import p5 from 'p5';
 
-// Creating the sketch itself
-const sketch = (p5: p5) => {
-	// DEMO: Prepare an array of MyCircle instances
-	const myCircles: MyCircle[] = [];
 
-	// The sketch setup method 
-	p5.setup = () => {
-		console.log('setup');
-		// Creating and positioning the canvas
-		const canvas = p5.createCanvas(800, 800);
-		canvas.parent("app");
-
-		// Configuring the canvas
-		p5.background("black");
-
-		// DEMO: Create three circles in the center of the canvas
-		for (let i = 1; i < 4; i++) {
-			const p = p5.width / 4;
-			const circlePos = p5.createVector(p * i, p5.height / 2);
-			const size = i % 2 !== 0 ? 24 : 32;
-			myCircles.push(new MyCircle(p5, circlePos, size));
-		}
-	};
-
-	// The sketch draw method
-	p5.draw = () => {
-		// DEMO: Let the circle instances draw themselves
-		myCircles.forEach(circle => circle.draw());
-	};
-};
 
 namespace sim {
 	enum actions {
@@ -309,7 +280,7 @@ namespace sim {
 				if (this.position !== this.current_movement_goal) {
 					return;
 				}
-			} 
+			}
 			console.log(`${this.name} changed their path in order to ${this.intention.toString()}`);
 			this.current_movement_goal = get_random_position()
 		}
@@ -416,21 +387,21 @@ namespace sim {
 					break;
 				case actions.forage:
 					let nearby_object = this.check_for_free_nearby_object([object_descriptor.edible, object_descriptor.drinkable]);
-						if (nearby_object) {
-							if (is_in_reach(nearby_object.position, this.position, this.skills.reach)) {
-								this.pick_up(nearby_object);
-								break;
-							} else {
-								console.log(`${this.name} is walking towards a ${nearby_object.name}`);
-								this.move_towards(nearby_object.position, this.skills.speed);
-								break;
-							}
+					if (nearby_object) {
+						if (is_in_reach(nearby_object.position, this.position, this.skills.reach)) {
+							this.pick_up(nearby_object);
+							break;
 						} else {
-							console.log(`${this.name} is foraging.`);
-							this.set_random_current_goal_position(this.check_if_goal_position_reached());
-							this.move_towards(this.current_movement_goal, this.skills.speed);
+							console.log(`${this.name} is walking towards a ${nearby_object.name}`);
+							this.move_towards(nearby_object.position, this.skills.speed);
 							break;
 						}
+					} else {
+						console.log(`${this.name} is foraging.`);
+						this.set_random_current_goal_position(this.check_if_goal_position_reached());
+						this.move_towards(this.current_movement_goal, this.skills.speed);
+						break;
+					}
 					break;
 			}
 
@@ -471,16 +442,64 @@ namespace sim {
 		people: Person[] = [];
 		objects: WorldObject[] = [];
 		plants: Plant[] = [];
+		p5: p5;
 
 		constructor() {
 			this.name = create_name();
+
 			console.log(`Somewhere, a world created itself. It is called ${this.name} by those who inhabit it.`)
 
 			for (let i = 0; i < get_random_whole_number(10, 30); i++) {
 				this.people.push(new Person(create_name(), new Date(Date.now()), { x: get_random_whole_number(0, this.width), y: get_random_whole_number(0, this.height), z: 0 }));
 			}
 
+			this.p5 = new p5(this.sketch);
+
 			this.simulation_loop();
+		}
+
+		sketch = (p5: p5) => {
+			console.log("Setting up graphics");
+			// DEMO: Prepare an array of MyCircle instances
+			const myCircles: MyCircle[] = [];
+
+			// The sketch setup method 
+			p5.setup = () => {
+				console.log('setup');
+				// Creating and positioning the canvas
+				const canvas = p5.createCanvas(800, 800);
+				canvas.parent("app");
+
+				// Configuring the canvas
+				p5.background("black");
+
+				this.people.forEach(person => {
+					myCircles.push(new MyCircle(this.p5, this.p5.createVector(person.position.x, person.position.y, person.position.z), 5));
+				});
+			};
+
+			// The sketch draw method
+			p5.draw = () => {
+				// DEMO: Let the circle instances draw themselves
+				myCircles.forEach(circle => circle.draw());
+			};
+		}
+
+		graphics_loop() {
+			console.log("Drawing graphics");
+			this.p5.clear();
+			const people_circles: MyCircle[] = [];
+			this.people.forEach(person => {
+				people_circles.push(new MyCircle(this.p5, this.p5.createVector(person.position.x, person.position.y, person.position.z), 5));
+			});
+			const object_circles: MyCircle[] = [];
+			this.objects.forEach(object => {
+				object_circles.push(new MyCircle(this.p5, this.p5.createVector(object.position.x, object.position.y, object.position.z), 3));
+			});
+			this.p5.draw = () => {
+				people_circles.forEach(circle => circle.draw());
+				object_circles.forEach(circle => circle.draw());
+			};
 		}
 
 		simulation_loop() {
@@ -518,6 +537,11 @@ namespace sim {
 				}
 
 				/**
+				 * Graphics
+				 */
+				this.graphics_loop();
+
+				/**
 				 * Summary
 				 **/
 				console.log(`The world has ${this.people.length} people in it.`);
@@ -534,5 +558,6 @@ namespace sim {
 	}
 
 	const world = new World();
-	new p5(sketch);
+
+
 }
