@@ -4,6 +4,18 @@ import MyCircle from './graphics';
 import p5 from 'p5';
 import { get_color_by_object_type } from './utils';
 
+export class text {
+	text: string
+	x: number
+	y: number
+
+	constructor(text: string, x: number, y: number) {
+		this.text = text
+		this.x = x
+		this.y = y
+	}
+}
+
 export enum object_descriptor {
 	edible = 1,
 	drinkable = 2,
@@ -17,7 +29,7 @@ export namespace sim {
 		idle = 1,
 		walk = 2,
 		eat = 3,
-		converse = 4,
+		trade = 4,
 		drink = 5,
 		pick_up = 6,
 		fell = 7,
@@ -151,7 +163,6 @@ export namespace sim {
 
 	function get_random_whole_number(min: number, max: number) {
 		let returnval = Math.floor(Math.random() * (max - min)) + min;
-		console.log(`random number: ${returnval}`);
 		return returnval
 	}
 
@@ -180,9 +191,8 @@ export namespace sim {
 	}
 
 	function get_nearby_people(position: position, radius: number): Person[] {
-		let people = []
-		for (let i = 0; i < world.people.length; i++) {
-			let person = world.people[i]
+		let people: Person[] = [];
+		for (let person of world.people) {
 			let distance = Math.sqrt(Math.pow(person.position.x - position.x, 2) + Math.pow(person.position.y - position.y, 2) + Math.pow(person.position.z - position.z, 2))
 			if (distance < radius) {
 				people.push(person)
@@ -205,6 +215,8 @@ export namespace sim {
 		hunger: number = 0;
 		thirst: number = 0;
 
+		money: number = 100;
+
 		birthday: Date;
 
 		relationships: Relationship[] = [];
@@ -212,6 +224,7 @@ export namespace sim {
 		memory: Memory[] = [];
 
 		current_perceptions: WorldObject[] = [];
+		current_people_in_range: Person[] = [];
 		intention: actions = actions.idle;
 		current_movement_goal: position = { x: 1, y: 1, z: 1 };
 		current_action: actions = actions.idle;
@@ -241,6 +254,18 @@ export namespace sim {
 			console.log(`${this.name} wants to ${this.intention}.`);
 		}
 
+		organize() {
+			// Set superfluous items to markedForTrade if not hungry or thirsty
+			for (let item of this.inventory)
+				if (this.inventory.filter(x => x.descriptors.includes(object_descriptor.edible) && x.markedForTrade === false).length > 2 && this.hunger <= 60) {
+					item.markedForTrade = true;
+					if (this.inventory.filter(x => x.descriptors.includes(object_descriptor.drinkable) && x.markedForTrade === false).length > 2 && this.thirst <= 60) {
+						item.markedForTrade = true;
+					}
+				}
+
+		}
+
 		decide() {
 			if (this.thirst > 50 && this.intention !== actions.drink) {
 				console.log(`${this.name} is thirsty.`);
@@ -252,11 +277,16 @@ export namespace sim {
 				this.intention = actions.eat;
 				return;
 			}
-			if (this.inventory.length <= 10 && this.intention !== actions.forage) {
+			if (this.inventory.length <= 3 && this.intention !== actions.forage) {
 				console.log(`${this.name} still has room in their backpack decides to go foraging for food and drink.`);
 				this.intention = actions.forage;
 				return;
 			}
+			if (this.inventory.length > 0 && this.intention !== actions.trade && this.intention !== actions.forage) {
+				this.intention = actions.trade;
+				return;
+			}
+
 			this.intention = actions.idle;
 		}
 
@@ -273,9 +303,11 @@ export namespace sim {
 		}
 
 		perceive(perception_value: number) {
-			console.log(`${this.name} has ${this.inventory.length} items in their backpack.`);
 			this.current_perceptions = Array<WorldObject>();
 			this.current_perceptions = get_nearby_objects(this.position, perception_value);
+
+			this.current_people_in_range = Array<Person>();
+			this.current_people_in_range = get_nearby_people(this.position, perception_value * 10);
 		}
 
 		get_status() {
@@ -284,18 +316,14 @@ export namespace sim {
 
 		set_random_current_goal_position(check_if_already_set: boolean) {
 			if (check_if_already_set) {
-				console.log(`${this.name} is already moving to a new position.`);
 				if (this.position !== this.current_movement_goal) {
 					return;
 				}
 			}
-			console.log(`${this.name} changed their path in order to ${actions[this.intention]}.`);
 			this.current_movement_goal = get_random_position_2d()
-			console.log(`${this.name} is now moving to ${this.current_movement_goal.x}, ${this.current_movement_goal.y}`);
 		}
 
 		set_center_as_goal_position() {
-			console.log(`${this.name} changed their path in order to ${actions[this.intention]} to the center.`);
 			this.current_movement_goal = { x: world.width / 2, y: world.height / 2, z: 1 }
 		}
 
@@ -303,8 +331,10 @@ export namespace sim {
 			// Checks if the person is outside the boundaries of the world
 			if (this.position.x <= 0.0 || this.position.x >= world.width ||
 				this.position.y <= 0.0 || this.position.y >= world.height ||
-				this.position.z <= 0.0 || this.position.z >= world.z_depth) {
+				this.position.z <= -10.0 || this.position.z >= world.z_depth) {
 				console.log(`${this.name} has left the world.`);
+				console.log(`${this.name} is now at ${this.position.x}, ${this.position.y}, ${this.position.z}.`);
+				console.log(`The world is now at ${world.width}x${world.height}x${world.z_depth}.`);
 				// Move the person to the opposite side of the world
 				if (this.position.x <= 0.0) {
 					this.position.x = world.width - 1;
@@ -342,14 +372,6 @@ export namespace sim {
 			let direction_length = Math.sqrt(Math.pow(direction.x, 2) + Math.pow(direction.y, 2) + Math.pow(direction.z, 2));
 			let direction_unit = { x: direction.x / direction_length, y: direction.y / direction_length, z: direction.z / direction_length };
 
-			console.log(`${this.name} is moving towards ${target.x}, ${target.y}, ${target.z} at ${speed} units per second.`);
-			console.log(`${this.name} is currently at ${this.position.x}, ${this.position.y}, ${this.position.z}.`);
-			console.log(`${this.name} current direction is ${JSON.stringify(direction)}`)
-			console.log(`${this.name} is currently moving towards ${this.current_movement_goal.x}, ${this.current_movement_goal.y}, ${this.current_movement_goal.z}.`);
-			console.log(`${this.name} is currently moving towards ${direction_unit.x}, ${direction_unit.y}, ${direction_unit.z}.`);
-			console.log(`${this.name} is currently ${distance} units away from their destination.`);
-			console.log(`${this.name} direction unit is ${JSON.stringify(direction_unit)}.`)
-
 			if (distance < speed) {
 				this.position = target;
 			} else {
@@ -363,12 +385,13 @@ export namespace sim {
 		}
 
 		do_action(): boolean {
-			let action_intensity = 1;
+			let action_intensity = 0.1;
 			switch (this.intention) {
+
 				case actions.idle:
 					this.current_action = actions.idle;
-					console.log(`${this.name} decides to do nothing in particular for a while.`)
 					break;
+
 				case actions.drink:
 					this.current_action = actions.drink;
 					let drink = this.inventory.find(x => x.descriptors.find(y => y === object_descriptor.drinkable));
@@ -395,6 +418,7 @@ export namespace sim {
 							break;
 						}
 					}
+
 				case actions.eat:
 					this.current_action = actions.eat;
 					let food = this.inventory.find(x => x.descriptors.find(y => y === object_descriptor.edible));
@@ -421,11 +445,41 @@ export namespace sim {
 							break;
 						}
 					}
-					break;
+
 				case actions.walk:
 					break;
-				case actions.converse:
+
+				case actions.trade:
+					// Check if anyone is nearby who also wants to converse
+					let nearby_trader = this.current_people_in_range.find(x => x.intention == actions.trade);
+					if (nearby_trader !== undefined && nearby_trader !== this && (nearby_trader.inventory.filter(x => x.markedForTrade === true).length > 0 && this.inventory.filter(x => x.markedForTrade === true).length > 0)) {
+						console.log(`${this.name} is trading with ${nearby_trader.name}.`);
+						// Exchange items that are set to tradeable and are more or less the same value.
+						let exchange_items = this.inventory.filter(x => x.markedForTrade === true);
+						let other_exchange_items = nearby_trader.inventory.filter(x => x.markedForTrade === true);
+
+						let value_exchange_items = exchange_items.reduce((acc, cur) => acc + cur.value, 0);
+
+						// Exchange items for money
+						this.inventory = this.inventory.concat(other_exchange_items);
+						nearby_trader.inventory = nearby_trader.inventory.filter(x => !other_exchange_items.find(y => y === x));
+
+						// Remove money of this person and add it to the other person with the value of the goods
+						if (this.money > value_exchange_items) {
+							this.money -= value_exchange_items;
+							nearby_trader.money += value_exchange_items;
+	
+							console.log(`${this.name} has bought items with a value of ${value_exchange_items} from ${nearby_trader.name}.`);
+						} else {
+							console.log(`${this.name} has not enough money to buy items from ${nearby_trader.name}.`);
+						}
+
+					} else {
+						console.log(`${this.name} is looking for a trader.`);
+						this.move_towards(this.current_movement_goal, this.skills.speed);
+					}
 					break;
+
 				case actions.pick_up:
 					break;
 				case actions.build:
@@ -442,17 +496,14 @@ export namespace sim {
 							this.pick_up(nearby_object);
 							break;
 						} else {
-							console.log(`${this.name} is walking towards a ${nearby_object.name}`);
 							this.move_towards(nearby_object.position, this.skills.speed);
 							break;
 						}
 					} else {
-						console.log(`${this.name} is foraging.`);
 						this.set_random_current_goal_position(false);
 						this.move_towards(this.current_movement_goal, this.skills.speed);
 						break;
 					}
-					break;
 			}
 
 			return this.body_functions(action_intensity);
@@ -474,6 +525,8 @@ export namespace sim {
 		descriptors: object_descriptor[] = [];
 		position: position = { x: 1, y: 1, z: 1 };
 		belongsTo: string = "";
+		markedForTrade: boolean = false;
+		value: number = 1;
 	}
 
 	class Plant {
@@ -491,6 +544,7 @@ export namespace sim {
 		z_depth: number = 100.0;
 		people: Person[] = [];
 		objects: WorldObject[] = [];
+		texts: text[] = [];
 		plants: Plant[] = [];
 		p5: p5;
 
@@ -499,7 +553,7 @@ export namespace sim {
 
 			console.log(`Somewhere, a world created itself. It is called ${this.name} by those who inhabit it.`)
 
-			for (let i = 0; i < get_random_whole_number(10, 30); i++) {
+			for (let i = 0; i < get_random_whole_number(10, 10); i++) {
 				this.people.push(new Person(create_name(), new Date(Date.now()), { x: get_random_whole_number(0, this.width), y: get_random_whole_number(0, this.height), z: 0 }));
 			}
 
@@ -527,6 +581,17 @@ export namespace sim {
 
 			p5.mouseClicked = () => {
 				console.log(`Mouse clicked at ${p5.mouseX}, ${p5.mouseY}`);
+
+				// Get nearest person
+				get_nearby_people({ x: p5.mouseX, y: p5.mouseY, z: 0 }, 105).forEach(x => {
+					console.log(`${x.name} is nearby.`);
+
+					// Draw stats and intention next to person as text
+					this.texts.push(new text(x.name, x.position.x + 10, x.position.y + 10));
+					this.texts.push(new text(`Intention: ${x.intention}`, x.position.x + 10, x.position.y + 20));
+					this.texts.push(new text(`Inventory: ${x.inventory.length}`, x.position.x + 10, x.position.y + 30));
+				}
+				);
 			}
 			p5.mouseWheel = () => {
 				console.log(`Mouse wheel at ${p5.mouseX}, ${p5.mouseY}`);
@@ -541,7 +606,7 @@ export namespace sim {
 			this.people.forEach(person => {
 				people_circles.push(new MyCircle(this.p5, this.p5.createVector(person.position.x, person.position.y, person.position.z), 5, [255, 100, 0], person.name));
 				people_circles.push(new MyCircle(this.p5, this.p5.createVector(person.position.x, person.position.y, person.position.z), person.skills.perception * 2, [100, 100, 100], undefined, 100));
-				
+
 			});
 
 			// Objects
@@ -550,10 +615,23 @@ export namespace sim {
 				object_circles.push(new MyCircle(this.p5, this.p5.createVector(object.position.x, object.position.y, object.position.z), 3, get_color_by_object_type(object.descriptors[0]), object.name));
 			});
 
+
+			// Text
+			this.texts.forEach(_text => {
+				this.p5.text(_text.text, _text.x, _text.y);
+			});
+
 			// Draw
 			this.p5.draw = () => {
 				people_circles.forEach(circle => circle.draw());
 				object_circles.forEach(circle => circle.draw());
+				// Draw lines around the world width and height
+				this.p5.stroke(255, 255, 255);
+				this.p5.line(0, 0, this.width, 0);
+				this.p5.line(0, 0, 0, this.height);
+				this.p5.line(this.width, 0, this.width, this.height);
+				this.p5.line(0, this.height, this.width, this.height);
+
 			};
 		}
 
@@ -570,9 +648,8 @@ export namespace sim {
 					if (person.check_if_goal_position_reached()) {
 						person.set_random_current_goal_position(true);
 					}
-					console.log(`${person.name} is ${actions[person.current_action]}ing towards ${JSON.stringify(person.current_movement_goal)}`);
-					console.log(`${person.name} current position is ${person.position.x}, ${person.position.y}, ${person.position.z}.`)
 					person.perceive(person.skills.perception);
+					person.organize();
 					person.decide();
 					if (!person.do_action()) {
 						console.log(`${person.name} has been found dead.`);
@@ -594,8 +671,6 @@ export namespace sim {
 							this.objects.push(new WorldObject(natural_fruit_forageable[get_random_whole_number(0, natural_fruit_forageable.length)], [object_descriptor.edible], { x: get_random_whole_number(150, this.width - 150), y: get_random_whole_number(150, this.height - 150), z: 0 }, ""));
 						}
 					}
-				} else {
-					console.log(`The world is full of objects, ${this.objects.length} in total.`);
 				}
 
 				/**
@@ -606,7 +681,6 @@ export namespace sim {
 				/**
 				 * Summary
 				 **/
-				console.log(`The world has ${this.people.length} people in it.`);
 				if (this.people.length === 0) {
 					console.log(`The world has no more people in it.`);
 					console.log(`The world has ended.`);
@@ -614,7 +688,6 @@ export namespace sim {
 					return;
 				}
 
-				console.log(`Another hour has passed.`);
 			});
 		}
 	}
