@@ -1,19 +1,18 @@
-import p5 from "p5";
 import P5 from "p5";
 
 export default class MyCircle {
 	_p5: P5;
 	_pos: P5.Vector;
 	_size: number;
-	_color: p5.Color;
+	_color: P5.Color;
 	_name: string | undefined;
 	alpha: number;
 
-	constructor(p5: P5, atPosition: P5.Vector, size: number, r: number, g: number, b: number, name?: string, alpha?: number) {
+	constructor(p5: P5, atPosition: P5.Vector, size: number, rgb: number[], name?: string, alpha?: number) {
 		this._p5 = p5;
 		this._pos = atPosition;
 		this._size = size;
-		this._color = p5.color(r, g, b, alpha);
+		this._color = p5.color(rgb[0], rgb[1], rgb[2], alpha);
 		this._name = name || undefined;
 		this.alpha = alpha || 255;
 	}

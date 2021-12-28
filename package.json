@@ -6,7 +6,7 @@
   "scripts": {
     "test": "test",
     "build": "webpack",
-    "start": "http-server ."
+    "start": "npm run build && http-server ."
   },
   "repository": {
     "type": "git",

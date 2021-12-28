@@ -2,10 +2,17 @@ import { timer } from 'rxjs';
 import MyCircle from './graphics';
 
 import p5 from 'p5';
+import { get_color_by_object_type } from './utils';
 
+export enum object_descriptor {
+	edible = 1,
+	drinkable = 2,
+	poisoned = 3,
+	weapon = 4,
+	building_material = 5
+}
 
-
-namespace sim {
+export namespace sim {
 	enum actions {
 		idle = 1,
 		walk = 2,
@@ -98,13 +105,7 @@ namespace sim {
 
 
 
-	enum object_descriptor {
-		edible = 1,
-		drinkable = 2,
-		poisoned = 3,
-		weapon = 4,
-		building_material = 5
-	}
+
 
 	interface position {
 		x: number,
@@ -117,15 +118,18 @@ namespace sim {
 	}
 
 	function create_name(): string {
-		let vowels = 'aeiouäöüeë';
+		let vowels = 'aeiou';
 		let consonants = 'bcdfghjklmnpqrstvwxyz';
 		let first_name = ""
 		let last_name = "";
-		for (let i = 0; i < (Math.floor(Math.random() * 10) + 1); i++) {
-			if ((Math.floor(Math.random() * 2) + 1) % 2 === 0) {
+		let vowel_chance = 1;
+		for (let i = 0; i < (Math.floor(Math.random() * 10) + 3); i++) {
+			if ((Math.floor(Math.random() * 3) + vowel_chance) > 2) {
 				first_name += vowels[Math.floor(Math.random() * vowels.length)]
+				vowel_chance = 0;
 			} else {
 				first_name += consonants[Math.floor(Math.random() * consonants.length)]
+				vowel_chance += 2;
 			}
 		}
 
@@ -157,13 +161,13 @@ namespace sim {
 
 	function get_nearby_objects(position: position, radius: number): WorldObject[] {
 		let objects = []
-		for (let i = 0; i < world.objects.length; i++) {
-			let obj = world.objects[i]
+		for (let obj of world.objects) {
 			let distance = Math.sqrt(Math.pow(obj.position.x - position.x, 2) + Math.pow(obj.position.y - position.y, 2) + Math.pow(obj.position.z - position.z, 2))
 			if (distance < radius) {
 				objects.push(obj)
 			}
 		}
+
 		return objects
 	}
 
@@ -334,7 +338,7 @@ namespace sim {
 				Math.pow(target.y - this.position.y, 2) +
 				Math.pow(target.z - this.position.z, 2));
 
-			let direction = { x: target.x - this.position.x, y: target.y - this.position.y, z: target.z - this.position.z};
+			let direction = { x: target.x - this.position.x, y: target.y - this.position.y, z: target.z - this.position.z };
 			let direction_length = Math.sqrt(Math.pow(direction.x, 2) + Math.pow(direction.y, 2) + Math.pow(direction.z, 2));
 			let direction_unit = { x: direction.x / direction_length, y: direction.y / direction_length, z: direction.z / direction_length };
 
@@ -532,14 +536,21 @@ namespace sim {
 		graphics_loop() {
 			this.p5.clear();
 			const people_circles: MyCircle[] = [];
+
+			// People
 			this.people.forEach(person => {
-				people_circles.push(new MyCircle(this.p5, this.p5.createVector(person.position.x, person.position.y, person.position.z), 5, 255, 100, 0, person.name));
-				people_circles.push(new MyCircle(this.p5, this.p5.createVector(person.position.x, person.position.y, person.position.z), person.skills.perception, 100, 100, 100, undefined, 100));
+				people_circles.push(new MyCircle(this.p5, this.p5.createVector(person.position.x, person.position.y, person.position.z), 5, [255, 100, 0], person.name));
+				people_circles.push(new MyCircle(this.p5, this.p5.createVector(person.position.x, person.position.y, person.position.z), person.skills.perception * 2, [100, 100, 100], undefined, 100));
+				
 			});
+
+			// Objects
 			const object_circles: MyCircle[] = [];
 			this.objects.forEach(object => {
-				object_circles.push(new MyCircle(this.p5, this.p5.createVector(object.position.x, object.position.y, object.position.z), 3, 0, 0, 100));
+				object_circles.push(new MyCircle(this.p5, this.p5.createVector(object.position.x, object.position.y, object.position.z), 3, get_color_by_object_type(object.descriptors[0]), object.name));
 			});
+
+			// Draw
 			this.p5.draw = () => {
 				people_circles.forEach(circle => circle.draw());
 				object_circles.forEach(circle => circle.draw());
