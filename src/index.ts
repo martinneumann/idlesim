@@ -1,7 +1,7 @@
 import { timer } from 'rxjs';
 import MyCircle from './graphics';
 
-import p5 from 'p5';
+import p5, { Camera } from 'p5';
 import { get_color_by_object_type } from './utils';
 
 export class text {
@@ -25,6 +25,8 @@ export enum object_descriptor {
 }
 
 export namespace sim {
+
+
 	enum actions {
 		idle = 1,
 		walk = 2,
@@ -184,8 +186,8 @@ export namespace sim {
 
 	function get_random_position_2d() {
 		return {
-			x: get_random_whole_number(100, world.width - 100),
-			y: get_random_whole_number(100, world.height - 100),
+			x: get_random_whole_number(0, world.width),
+			y: get_random_whole_number(0, world.height),
 			z: 1,
 		}
 	}
@@ -202,7 +204,7 @@ export namespace sim {
 	}
 
 	class Skills {
-		perception: number = 30
+		perception: number = 80
 		speed: number = 50
 		reach: number = 5
 	}
@@ -257,9 +259,9 @@ export namespace sim {
 		organize() {
 			// Set superfluous items to markedForTrade if not hungry or thirsty
 			for (let item of this.inventory)
-				if (this.inventory.filter(x => x.descriptors.includes(object_descriptor.edible) && x.markedForTrade === false).length > 2 && this.hunger <= 60) {
+				if (this.inventory.filter(x => x.descriptors.includes(object_descriptor.edible) && x.markedForTrade === false).length > 1 && this.hunger <= 60) {
 					item.markedForTrade = true;
-					if (this.inventory.filter(x => x.descriptors.includes(object_descriptor.drinkable) && x.markedForTrade === false).length > 2 && this.thirst <= 60) {
+					if (this.inventory.filter(x => x.descriptors.includes(object_descriptor.drinkable) && x.markedForTrade === false).length > 1 && this.thirst <= 60) {
 						item.markedForTrade = true;
 					}
 				}
@@ -385,7 +387,7 @@ export namespace sim {
 		}
 
 		do_action(): boolean {
-			let action_intensity = 0.1;
+			let action_intensity = 1;
 			switch (this.intention) {
 
 				case actions.idle:
@@ -468,7 +470,7 @@ export namespace sim {
 						if (this.money > value_exchange_items) {
 							this.money -= value_exchange_items;
 							nearby_trader.money += value_exchange_items;
-	
+
 							console.log(`${this.name} has bought items with a value of ${value_exchange_items} from ${nearby_trader.name}.`);
 						} else {
 							console.log(`${this.name} has not enough money to buy items from ${nearby_trader.name}.`);
@@ -564,8 +566,6 @@ export namespace sim {
 
 		sketch = (p5: p5) => {
 			console.log("Setting up graphics");
-			// DEMO: Prepare an array of MyCircle instances
-			const myCircles: MyCircle[] = [];
 
 			// The sketch setup method 
 			p5.setup = () => {
@@ -580,10 +580,10 @@ export namespace sim {
 			};
 
 			p5.mouseClicked = () => {
-				console.log(`Mouse clicked at ${p5.mouseX}, ${p5.mouseY}`);
+				console.log(`Mouse clicked at ${p5.mouseX}, ${this.p5.mouseY}`);
 
 				// Get nearest person
-				get_nearby_people({ x: p5.mouseX, y: p5.mouseY, z: 0 }, 105).forEach(x => {
+				get_nearby_people({ x: p5.mouseX, y: this.p5.mouseY, z: 0 }, 105).forEach(x => {
 					console.log(`${x.name} is nearby.`);
 
 					// Draw stats and intention next to person as text
@@ -593,8 +593,11 @@ export namespace sim {
 				}
 				);
 			}
-			p5.mouseWheel = () => {
-				console.log(`Mouse wheel at ${p5.mouseX}, ${p5.mouseY}`);
+
+			p5.mouseWheel = (event) => {
+				console.log(`Mouse wheel at ${p5.mouseX}, ${this.p5.mouseY} with event ${JSON.stringify(event)}`);
+				if (event !== undefined) {
+				}
 			}
 		}
 
@@ -623,6 +626,7 @@ export namespace sim {
 
 			// Draw
 			this.p5.draw = () => {
+
 				people_circles.forEach(circle => circle.draw());
 				object_circles.forEach(circle => circle.draw());
 				// Draw lines around the world width and height
@@ -663,12 +667,12 @@ export namespace sim {
 				if (this.objects.length < 10) {
 					for (let i = 0; i < get_random_whole_number(1, 15); i++) {
 						if (decideWithProbability(50)) {
-							this.objects.push(new WorldObject(natural_drinks[get_random_whole_number(0, natural_drinks.length)], [object_descriptor.drinkable], { x: get_random_whole_number(150, this.width - 150), y: get_random_whole_number(150, this.height - 150), z: 0 }, ""));
+							this.objects.push(new WorldObject(natural_drinks[get_random_whole_number(0, natural_drinks.length)], [object_descriptor.drinkable], { x: get_random_whole_number(150, this.width), y: get_random_whole_number(150, this.height), z: 1 }, ""));
 						}
 					}
 					for (let i = 0; i < get_random_whole_number(1, 15); i++) {
 						if (decideWithProbability(50)) {
-							this.objects.push(new WorldObject(natural_fruit_forageable[get_random_whole_number(0, natural_fruit_forageable.length)], [object_descriptor.edible], { x: get_random_whole_number(150, this.width - 150), y: get_random_whole_number(150, this.height - 150), z: 0 }, ""));
+							this.objects.push(new WorldObject(natural_fruit_forageable[get_random_whole_number(0, natural_fruit_forageable.length)], [object_descriptor.edible], { x: get_random_whole_number(150, this.width), y: get_random_whole_number(150, this.height), z: 1 }, ""));
 						}
 					}
 				}
@@ -685,7 +689,6 @@ export namespace sim {
 					console.log(`The world has no more people in it.`);
 					console.log(`The world has ended.`);
 					sim_timer.unsubscribe();
-					return;
 				}
 
 			});
@@ -693,6 +696,5 @@ export namespace sim {
 	}
 
 	const world = new World();
-
 
 }
