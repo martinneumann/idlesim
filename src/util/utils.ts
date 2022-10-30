@@ -1,4 +1,4 @@
-import { object_descriptor } from "."; './index';
+import { object_descriptor } from "./objectDescriptor";
 
 export function get_color_by_object_type(object_type: object_descriptor): number[] {
 	switch (object_type) {
