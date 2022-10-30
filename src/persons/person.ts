@@ -57,7 +57,6 @@ export class Person {
     }
 
     print_intention() {
-        console.log(`${this.name} wants to ${this.intention}.`);
     }
 
     organize() {
@@ -74,17 +73,14 @@ export class Person {
 
     decide() {
         if (this.thirst > 50 && this.intention !== actions.drink) {
-            console.log(`${this.name} is thirsty.`);
             this.intention = actions.drink;
             return;
         }
         if (this.hunger > 50 && this.intention !== actions.eat) {
-            console.log(`${this.name} is hungry.`);
             this.intention = actions.eat;
             return;
         }
         if (this.inventory.length <= 3 && this.intention !== actions.forage) {
-            console.log(`${this.name} still has room in their backpack decides to go foraging for food and drink.`);
             this.intention = actions.forage;
             return;
         }
@@ -98,12 +94,10 @@ export class Person {
 
     pick_up(object: WorldObject, world: World) {
         if (object.belongsTo != "") {
-            console.log(`${this.name} tried to pick up ${object.name} from ${object.belongsTo}... but decided not to steal.`);
         } else {
             object.belongsTo = this.name;
             this.inventory.push(object);
             world.objects.splice(world.objects.indexOf(object), 1);
-            console.log(`${this.name} picked up ${object.name}.`);
             this.skills.perception += 1;
         }
     }
@@ -117,7 +111,6 @@ export class Person {
     }
 
     get_status() {
-        console.log(`${this.name} is ${this.hunger}% hungry and ${this.thirst}% thirsty.`);
     }
 
     set_random_current_goal_position(check_if_already_set: boolean) {
@@ -141,7 +134,6 @@ export class Person {
 
     check_if_goal_position_reached(): boolean {
         if (this.position === this.current_movement_goal) {
-            console.log(`${this.name} has reached their destination after a long trek and is now resting.`);
             return true;
         }
         return false;
@@ -181,7 +173,6 @@ export class Person {
                 let drink = this.inventory.find(x => x.descriptors.find(y => y === object_descriptor.drinkable));
                 if (drink) {
                     this.thirst -= 60;
-                    console.log(`${this.name} drinks the ${drink.name}.`);
                     this.inventory.splice(this.inventory.findIndex(x => x == drink), 1);
                     break;
                 } else {
@@ -192,12 +183,10 @@ export class Person {
                             this.pick_up(nearby_object, this.world);
                             break;
                         } else {
-                            console.log(`${this.name} is walking towards a ${nearby_object.name}`);
                             this.move_towards(nearby_object.position, this.skills.speed);
                             break;
                         }
                     } else {
-                        console.log(`${this.name} is trying to find something to drink.`);
                         this.move_towards(this.current_movement_goal, this.skills.speed);
                         break;
                     }
@@ -208,7 +197,6 @@ export class Person {
                 let food = this.inventory.find(x => x.descriptors.find(y => y === object_descriptor.edible));
                 if (food) {
                     this.hunger -= 60;
-                    console.log(`${this.name} eats the ${food.name}.`);
                     this.skills.speed += 1;
                     this.inventory.splice(this.inventory.findIndex(x => x == food), 1);
                     break;
@@ -219,12 +207,10 @@ export class Person {
                             this.pick_up(nearby_object, this.world);
                             break;
                         } else {
-                            console.log(`${this.name} is walking towards a ${nearby_object.name}`);
                             this.move_towards(nearby_object.position, this.skills.speed);
                             break;
                         }
                     } else {
-                        console.log(`${this.name} is trying to find something to eat.`);
                         this.move_towards(this.current_movement_goal, this.skills.speed);
                         break;
                     }
@@ -237,7 +223,6 @@ export class Person {
                 // Check if anyone is nearby who also wants to converse
                 let nearby_trader = this.current_people_in_range.find(x => x.intention == actions.trade);
                 if (nearby_trader !== undefined && nearby_trader !== this && (nearby_trader.inventory.filter(x => x.markedForTrade === true).length > 0 && this.inventory.filter(x => x.markedForTrade === true).length > 0)) {
-                    console.log(`${this.name} is trading with ${nearby_trader.name}.`);
                     // Exchange items that are set to tradeable and are more or less the same value.
                     let exchange_items = this.inventory.filter(x => x.markedForTrade === true);
                     let other_exchange_items = nearby_trader.inventory.filter(x => x.markedForTrade === true);
@@ -253,13 +238,8 @@ export class Person {
                         this.money -= value_exchange_items;
                         nearby_trader.money += value_exchange_items;
 
-                        console.log(`${this.name} has bought items with a value of ${value_exchange_items} from ${nearby_trader.name}.`);
-                    } else {
-                        console.log(`${this.name} has not enough money to buy items from ${nearby_trader.name}.`);
                     }
-
                 } else {
-                    console.log(`${this.name} is looking for a trader.`);
                     this.move_towards(this.current_movement_goal, this.skills.speed);
                 }
                 break;

@@ -8,6 +8,7 @@ import { WorldObject } from "../objects/worldObjects";
 import { decideWithProbability } from "../persons/behavior/decideWithProbability";
 import { get_nearby_people } from "../persons/behavior/getNearbyPeople";
 import { Person } from "../persons/person";
+import { actions } from "../util/actions";
 import { get_random_whole_number } from "../util/functions/getRandomWholeNumber";
 import { createName } from "../util/nameCreators";
 import { object_descriptor } from "../util/objectDescriptor";
@@ -35,17 +36,16 @@ export
             this.people.push(new Person(createName(), new Date(Date.now()), { x: get_random_whole_number(0, this.width), y: get_random_whole_number(0, this.height), z: 0 }, this));
         }
 
+
         this.p5 = new p5(this.sketch);
 
-        this.simulation_loop();
     }
 
+
     sketch = (p5: p5) => {
-        console.log("Setting up graphics");
 
         // The sketch setup method 
         p5.setup = () => {
-            console.log('setup');
             // Creating and positioning the canvas
             const canvas = p5.createCanvas(800, 800);
             canvas.parent("app");
@@ -56,11 +56,9 @@ export
         };
 
         p5.mouseClicked = () => {
-            console.log(`Mouse clicked at ${p5.mouseX}, ${this.p5.mouseY}`);
 
             // Get nearest person
             get_nearby_people({ x: p5.mouseX, y: this.p5.mouseY, z: 0 }, 105, this).forEach(x => {
-                console.log(`${x.name} is nearby.`);
 
                 // Draw stats and intention next to person as text
                 this.texts.push(new text(x.name, x.position.x + 10, x.position.y + 10));
@@ -71,7 +69,6 @@ export
         }
 
         p5.mouseWheel = (event) => {
-            console.log(`Mouse wheel at ${p5.mouseX}, ${this.p5.mouseY} with event ${JSON.stringify(event)}`);
             if (event !== undefined) {
             }
         }
@@ -117,7 +114,13 @@ export
 
     simulation_loop() {
         console.log(`Time has started to affect the world.`)
-        const sim_timer = timer(1000, 200).subscribe(() => {
+
+
+        const html = document.getElementById('people') as HTMLElement;
+
+        const sim_timer = timer(1000, 1000).subscribe(() => {
+            if (html.innerHTML !== null)
+                html.innerHTML = '';
 
             /**
              * People actions
@@ -135,7 +138,19 @@ export
                     console.log(`${person.name} has been found dead.`);
                     this.people.splice(this.people.findIndex(x => x == person), 1);
                 }
+                /**
+                            * Stat update
+                            */
+
+                if (html?.innerHTML !== null) {
+                    this.people.forEach(person =>
+                        html.innerHTML += `${person.name}: ${person.age} years old.Currently  ${actions[person.current_action]}ing. Sees ${person.current_perceptions.map(x => x.name).join(', ')}. Owns ${person.inventory.length} items. <br>`
+                    )
+                }
+
             });
+
+
 
             /**
              * World actions
