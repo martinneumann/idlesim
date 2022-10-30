@@ -9,7 +9,7 @@ import { decideWithProbability } from "../persons/behavior/decideWithProbability
 import { get_nearby_people } from "../persons/behavior/getNearbyPeople";
 import { Person } from "../persons/person";
 import { get_random_whole_number } from "../util/functions/getRandomWholeNumber";
-import { create_name } from "../util/nameCreators";
+import { createName } from "../util/nameCreators";
 import { object_descriptor } from "../util/objectDescriptor";
 import { text } from "../util/text";
 import { get_color_by_object_type } from "../util/utils";
@@ -27,12 +27,12 @@ export
     p5: p5;
 
     constructor() {
-        this.name = create_name();
+        this.name = createName();
 
         console.log(`Somewhere, a world created itself. It is called ${this.name} by those who inhabit it.`)
 
         for (let i = 0; i < get_random_whole_number(10, 10); i++) {
-            this.people.push(new Person(create_name(), new Date(Date.now()), { x: get_random_whole_number(0, this.width), y: get_random_whole_number(0, this.height), z: 0 }, this));
+            this.people.push(new Person(createName(), new Date(Date.now()), { x: get_random_whole_number(0, this.width), y: get_random_whole_number(0, this.height), z: 0 }, this));
         }
 
         this.p5 = new p5(this.sketch);

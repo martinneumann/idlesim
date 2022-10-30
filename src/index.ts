@@ -1,7 +1,7 @@
 import { timer } from 'rxjs';
 import MyCircle from './graphics';
 import { natural_drinks, tree_types, natural_fruit_forageable } from './assets/environment'
-import { create_name } from './util/nameCreators';
+import { createName } from './util/nameCreators';
 import { text } from './util/text';
 import { object_descriptor } from './util/objectDescriptor';
 import { actions } from './util/actions';

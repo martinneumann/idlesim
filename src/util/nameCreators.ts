@@ -1,25 +1,38 @@
-export function create_name(): string {
-    let vowels = 'aeiou';
-    let consonants = 'bcdfghjklmnpqrstvwxyz';
+const vowels = [
+    'a', 'e', 'i', 'o', 'u'
+]
+
+const consonants_start = [
+    'ch', 'b', 'c', 'd', 'f', 't', 'sh', 'z', 'w', 'g', 'k', 'l', 'h'
+]
+
+const consonants_middle = [
+    'ch', 'b', 'c', 'd', 'f', 't', 'sh', 'z', 'w', 'g', 'k', 'l'
+]
+
+const special_characters = [
+    '\'', '-'
+]
+
+function selectNamePart(count: number) {
+    if (count % 2) {
+        return vowels[Math.floor(Math.random() * vowels.length)]
+    } else {
+        return consonants_start[Math.floor(Math.random() * consonants_start.length)]
+    }
+}
+
+export function createName(): string {
     let first_name = ""
     let last_name = "";
-    let vowel_chance = 1;
-    for (let i = 0; i < (Math.floor(Math.random() * 10) + 3); i++) {
-        if ((Math.floor(Math.random() * 3) + vowel_chance) > 2) {
-            first_name += vowels[Math.floor(Math.random() * vowels.length)]
-            vowel_chance = 0;
-        } else {
-            first_name += consonants[Math.floor(Math.random() * consonants.length)]
-            vowel_chance += 2;
-        }
+    const numberOfFirstNameLetters = Math.floor((Math.random() + 2) * 3)
+    const numberOfLastNameLetters = Math.floor((Math.random() + 2) * 4)
+    for (let i = 0; i < numberOfFirstNameLetters; i++) {
+        first_name += selectNamePart(i);
     }
 
-    for (let i = 0; i < (Math.floor(Math.random() * 15) + 4); i++) {
-        if ((Math.floor(Math.random() * 2) + 1) % 2 === 0) {
-            last_name += vowels[Math.floor(Math.random() * vowels.length)]
-        } else {
-            last_name += consonants[Math.floor(Math.random() * consonants.length)]
-        }
+    for (let i = 0; i < numberOfLastNameLetters; i++) {
+        last_name += selectNamePart(i);
     }
     first_name = capitalizeFirstLetter(first_name)
     last_name = capitalizeFirstLetter(last_name)
