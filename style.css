@@ -1,9 +1,5 @@
 @import "./src//ui/floating-menu-button/floating-menu-button.css";
 
-body {
-  position: relative;
-}
-
 .inner {
   border: 1px solid black;
   background: rgba(51, 51, 51, 0.7);
@@ -16,11 +12,11 @@ body {
   position: relative;
   justify-content: center;
   align-items: center;
+  flex-direction: row;
 }
 
-.ui {
-  width: 70%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+.status-table {
+  width: 50%;
+  text-align: center;
+  margin-left: 48px;
 }

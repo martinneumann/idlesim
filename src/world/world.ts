@@ -174,7 +174,7 @@ export class World {
     const html = document.getElementById("table-body") as HTMLElement;
 
     let a = 0;
-    const sim_timer = timer(1000, 1000).subscribe(() => {
+    const sim_timer = timer(1000, 500).subscribe(() => {
       a += 1;
       if (html.innerHTML !== null) html.innerHTML = "";
 
