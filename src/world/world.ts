@@ -1,6 +1,9 @@
 import p5 from "p5";
 import { timer } from "rxjs";
-import { natural_drinks, natural_fruit_forageable } from "../assets/environment";
+import {
+  natural_drinks,
+  natural_fruit_forageable,
+} from "../assets/environment";
 import { Plant } from "../assets/plant";
 import { check_if_boundaries_are_reached } from "../geometry/functions/checkIfBoundariesAreReached";
 import MyCircle from "../graphics";
@@ -15,173 +18,255 @@ import { object_descriptor } from "../util/objectDescriptor";
 import { text } from "../util/text";
 import { get_color_by_object_type } from "../util/utils";
 
-export
-    class World {
-    name: string;
-    width: number = 700.0;
-    height: number = 700.0;
-    z_depth: number = 100.0;
-    people: Person[] = [];
-    objects: WorldObject[] = [];
-    texts: text[] = [];
-    plants: Plant[] = [];
-    p5: p5;
+export class World {
+  name: string;
+  width: number = 700.0;
+  height: number = 700.0;
+  z_depth: number = 100.0;
+  people: Person[] = [];
+  objects: WorldObject[] = [];
+  texts: text[] = [];
+  plants: Plant[] = [];
+  p5: p5;
 
-    constructor() {
-        this.name = createName();
+  constructor() {
+    this.name = createName();
 
-        console.log(`Somewhere, a world created itself. It is called ${this.name} by those who inhabit it.`)
+    console.log(
+      `Somewhere, a world created itself. It is called ${this.name} by those who inhabit it.`
+    );
 
-        for (let i = 0; i < get_random_whole_number(10, 10); i++) {
-            this.people.push(new Person(createName(), new Date(Date.now()), { x: get_random_whole_number(0, this.width), y: get_random_whole_number(0, this.height), z: 0 }, this));
-        }
-
-
-        this.p5 = new p5(this.sketch);
-
+    for (let i = 0; i < get_random_whole_number(10, 10); i++) {
+      this.people.push(
+        new Person(
+          createName(),
+          new Date(Date.now()),
+          {
+            x: get_random_whole_number(0, this.width),
+            y: get_random_whole_number(0, this.height),
+            z: 0,
+          },
+          this
+        )
+      );
     }
 
+    this.p5 = new p5(this.sketch);
+  }
 
-    sketch = (p5: p5) => {
+  sketch = (p5: p5) => {
+    // The sketch setup method
+    p5.setup = () => {
+      // Creating and positioning the canvas
+      const canvas = p5.createCanvas(800, 800);
+      canvas.parent("app");
 
-        // The sketch setup method 
-        p5.setup = () => {
-            // Creating and positioning the canvas
-            const canvas = p5.createCanvas(800, 800);
-            canvas.parent("app");
+      // Configuring the canvas
+      p5.background("black");
+    };
 
-            // Configuring the canvas
-            p5.background("black");
+    p5.mouseClicked = () => {
+      // Get nearest person
+      get_nearby_people(
+        { x: p5.mouseX, y: this.p5.mouseY, z: 0 },
+        105,
+        this
+      ).forEach((x) => {
+        // Draw stats and intention next to person as text
+        this.texts.push(new text(x.name, x.position.x + 10, x.position.y + 10));
+        this.texts.push(
+          new text(
+            `Intention: ${x.intention}`,
+            x.position.x + 10,
+            x.position.y + 20
+          )
+        );
+        this.texts.push(
+          new text(
+            `Inventory: ${x.inventory.length}`,
+            x.position.x + 10,
+            x.position.y + 30
+          )
+        );
+      });
+    };
 
-        };
+    p5.mouseWheel = (event) => {
+      if (event !== undefined) {
+      }
+    };
+  };
 
-        p5.mouseClicked = () => {
+  graphics_loop() {
+    this.p5.clear();
+    const people_circles: MyCircle[] = [];
 
-            // Get nearest person
-            get_nearby_people({ x: p5.mouseX, y: this.p5.mouseY, z: 0 }, 105, this).forEach(x => {
+    // People
+    this.people.forEach((person) => {
+      people_circles.push(
+        new MyCircle(
+          this.p5,
+          this.p5.createVector(
+            person.position.x,
+            person.position.y,
+            person.position.z
+          ),
+          5,
+          [255, 100, 0],
+          person.name
+        )
+      );
+      people_circles.push(
+        new MyCircle(
+          this.p5,
+          this.p5.createVector(
+            person.position.x,
+            person.position.y,
+            person.position.z
+          ),
+          person.skills.perception * 2,
+          [100, 100, 100],
+          undefined,
+          100
+        )
+      );
+    });
 
-                // Draw stats and intention next to person as text
-                this.texts.push(new text(x.name, x.position.x + 10, x.position.y + 10));
-                this.texts.push(new text(`Intention: ${x.intention}`, x.position.x + 10, x.position.y + 20));
-                this.texts.push(new text(`Inventory: ${x.inventory.length}`, x.position.x + 10, x.position.y + 30));
-            }
+    // Objects
+    const object_circles: MyCircle[] = [];
+    this.objects.forEach((object) => {
+      object_circles.push(
+        new MyCircle(
+          this.p5,
+          this.p5.createVector(
+            object.position.x,
+            object.position.y,
+            object.position.z
+          ),
+          3,
+          get_color_by_object_type(object.descriptors[0]),
+          object.name
+        )
+      );
+    });
+
+    // Text
+    this.texts.forEach((_text) => {
+      this.p5.text(_text.text, _text.x, _text.y);
+    });
+
+    // Draw
+    this.p5.draw = () => {
+      people_circles.forEach((circle) => circle.draw());
+      object_circles.forEach((circle) => circle.draw());
+      // Draw lines around the world width and height
+      this.p5.stroke(255, 255, 255);
+      this.p5.line(0, 0, this.width, 0);
+      this.p5.line(0, 0, 0, this.height);
+      this.p5.line(this.width, 0, this.width, this.height);
+      this.p5.line(0, this.height, this.width, this.height);
+    };
+  }
+
+  simulation_loop() {
+    console.log(`Time has started to affect the world.`);
+
+    const html = document.getElementById("table-body") as HTMLElement;
+
+    let a = 0;
+    const sim_timer = timer(1000, 1000).subscribe(() => {
+      a += 1;
+      if (html.innerHTML !== null) html.innerHTML = "";
+
+      /**
+       * People actions
+       **/
+      this.people.forEach((person) => {
+        check_if_boundaries_are_reached(person.position, this);
+        if (person.check_if_goal_position_reached()) {
+          person.set_random_current_goal_position(true);
+        }
+        person.perceive(person.skills.perception);
+        person.organize();
+        person.decide();
+        if (!person.do_action()) {
+          console.log(`${person.name} has been found dead.`);
+          this.people.splice(
+            this.people.findIndex((x) => x == person),
+            1
+          );
+        }
+      });
+
+      /**
+       * Stat update
+       */
+
+      if (html?.innerHTML !== null) {
+        this.people.forEach((person) => {
+          html.innerHTML += `<tr><td>${person.name}</td><td>${
+            actions[person.current_action]
+          }</td><td>${person.inventory
+            .map((item) => item.name)
+            .join(",  ")}</td><tr>`;
+        });
+      }
+
+      /**
+       * World actions
+       **/
+      if (this.objects.length < 10) {
+        for (let i = 0; i < get_random_whole_number(1, 15); i++) {
+          if (decideWithProbability(50)) {
+            this.objects.push(
+              new WorldObject(
+                natural_drinks[
+                  get_random_whole_number(0, natural_drinks.length)
+                ],
+                [object_descriptor.drinkable],
+                {
+                  x: get_random_whole_number(150, this.width),
+                  y: get_random_whole_number(150, this.height),
+                  z: 1,
+                },
+                ""
+              )
             );
+          }
         }
-
-        p5.mouseWheel = (event) => {
-            if (event !== undefined) {
-            }
+        for (let i = 0; i < get_random_whole_number(1, 15); i++) {
+          if (decideWithProbability(50)) {
+            this.objects.push(
+              new WorldObject(
+                natural_fruit_forageable[
+                  get_random_whole_number(0, natural_fruit_forageable.length)
+                ],
+                [object_descriptor.edible],
+                {
+                  x: get_random_whole_number(150, this.width),
+                  y: get_random_whole_number(150, this.height),
+                  z: 1,
+                },
+                ""
+              )
+            );
+          }
         }
-    }
+      }
 
-    graphics_loop() {
-        this.p5.clear();
-        const people_circles: MyCircle[] = [];
+      /**
+       * Graphics
+       */
+      this.graphics_loop();
 
-        // People
-        this.people.forEach(person => {
-            people_circles.push(new MyCircle(this.p5, this.p5.createVector(person.position.x, person.position.y, person.position.z), 5, [255, 100, 0], person.name));
-            people_circles.push(new MyCircle(this.p5, this.p5.createVector(person.position.x, person.position.y, person.position.z), person.skills.perception * 2, [100, 100, 100], undefined, 100));
-
-        });
-
-        // Objects
-        const object_circles: MyCircle[] = [];
-        this.objects.forEach(object => {
-            object_circles.push(new MyCircle(this.p5, this.p5.createVector(object.position.x, object.position.y, object.position.z), 3, get_color_by_object_type(object.descriptors[0]), object.name));
-        });
-
-
-        // Text
-        this.texts.forEach(_text => {
-            this.p5.text(_text.text, _text.x, _text.y);
-        });
-
-        // Draw
-        this.p5.draw = () => {
-
-            people_circles.forEach(circle => circle.draw());
-            object_circles.forEach(circle => circle.draw());
-            // Draw lines around the world width and height
-            this.p5.stroke(255, 255, 255);
-            this.p5.line(0, 0, this.width, 0);
-            this.p5.line(0, 0, 0, this.height);
-            this.p5.line(this.width, 0, this.width, this.height);
-            this.p5.line(0, this.height, this.width, this.height);
-
-        };
-    }
-
-    simulation_loop() {
-        console.log(`Time has started to affect the world.`)
-
-
-        const html = document.getElementById('people') as HTMLElement;
-
-        const sim_timer = timer(1000, 1000).subscribe(() => {
-            if (html.innerHTML !== null)
-                html.innerHTML = '';
-
-            /**
-             * People actions
-             **/
-
-            this.people.forEach(person => {
-                check_if_boundaries_are_reached(person.position, this);
-                if (person.check_if_goal_position_reached()) {
-                    person.set_random_current_goal_position(true);
-                }
-                person.perceive(person.skills.perception);
-                person.organize();
-                person.decide();
-                if (!person.do_action()) {
-                    console.log(`${person.name} has been found dead.`);
-                    this.people.splice(this.people.findIndex(x => x == person), 1);
-                }
-                /**
-                            * Stat update
-                            */
-
-                if (html?.innerHTML !== null) {
-                    this.people.forEach(person =>
-                        html.innerHTML += `${person.name}: ${person.age} years old.Currently  ${actions[person.current_action]}ing. Sees ${person.current_perceptions.map(x => x.name).join(', ')}. Owns ${person.inventory.length} items. <br>`
-                    )
-                }
-
-            });
-
-
-
-            /**
-             * World actions
-             **/
-            if (this.objects.length < 10) {
-                for (let i = 0; i < get_random_whole_number(1, 15); i++) {
-                    if (decideWithProbability(50)) {
-                        this.objects.push(new WorldObject(natural_drinks[get_random_whole_number(0, natural_drinks.length)], [object_descriptor.drinkable], { x: get_random_whole_number(150, this.width), y: get_random_whole_number(150, this.height), z: 1 }, ""));
-                    }
-                }
-                for (let i = 0; i < get_random_whole_number(1, 15); i++) {
-                    if (decideWithProbability(50)) {
-                        this.objects.push(new WorldObject(natural_fruit_forageable[get_random_whole_number(0, natural_fruit_forageable.length)], [object_descriptor.edible], { x: get_random_whole_number(150, this.width), y: get_random_whole_number(150, this.height), z: 1 }, ""));
-                    }
-                }
-            }
-
-            /**
-             * Graphics
-             */
-            this.graphics_loop();
-
-            /**
-             * Summary
-             **/
-            if (this.people.length === 0) {
-                console.log(`The world has no more people in it.`);
-                console.log(`The world has ended.`);
-                sim_timer.unsubscribe();
-            }
-
-        });
-    }
+      /**
+       * Summary
+       **/
+      if (this.people.length === 0) {
+        console.log(`The world has no more people in it.`);
+        console.log(`The world has ended.`);
+        sim_timer.unsubscribe();
+      }
+    });
+  }
 }

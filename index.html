@@ -4,7 +4,6 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>idlesim v2</title>
-    <script type="css" src="./dist/bundle.js"></script>
     <link
       rel="stylesheet"
       href="https://unpkg.com/@picocss/pico@latest/css/pico.min.css"
@@ -17,6 +16,16 @@
     <div class="outer">
       <div class="inner" id="app"></div>
     </div>
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col">Activity</th>
+          <th scope="col">Inventory</th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
     <div class="people" id="people"></div>
   </body>
   <script type="module" src="./dist/bundle.js"></script>
