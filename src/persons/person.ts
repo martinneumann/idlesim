@@ -84,11 +84,11 @@ export class Person {
   }
 
   decide() {
-    if (this.thirst > 50 && this.intention) {
+    if (this.thirst > 50) {
       this.intention = actions.drink;
       return;
     }
-    if (this.hunger > 50 && this.intention) {
+    if (this.hunger > 50) {
       this.intention = actions.eat;
       return;
     }
@@ -96,7 +96,7 @@ export class Person {
       this.intention = actions.forage;
       return;
     }
-    if (this.inventory.length > 0 && this.intention !== actions.trade) {
+    if (this.inventory.length > 3) {
       this.intention = actions.trade;
       return;
     }
@@ -213,7 +213,6 @@ export class Person {
         break;
 
       case actions.drink:
-        this.current_action = actions.drink;
         let drink = this.inventory.find((x) =>
           x.descriptors.find((y) => y === object_descriptor.drinkable)
         );
@@ -249,7 +248,6 @@ export class Person {
         }
 
       case actions.eat:
-        this.current_action = actions.eat;
         let food = this.inventory.find((x) =>
           x.descriptors.find((y) => y === object_descriptor.edible)
         );

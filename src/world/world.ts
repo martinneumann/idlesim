@@ -174,7 +174,7 @@ export class World {
     const html = document.getElementById("table-body") as HTMLElement;
 
     let a = 0;
-    const sim_timer = timer(1000, 500).subscribe(() => {
+    const sim_timer = timer(1000, 200).subscribe(() => {
       a += 1;
       if (html.innerHTML !== null) html.innerHTML = "";
 
@@ -204,11 +204,19 @@ export class World {
 
       if (html?.innerHTML !== null) {
         this.people.forEach((person) => {
-          html.innerHTML += `<tr><td>${person.name}</td><td>${
-            actions[person.current_action]
-          }</td><td>${person.inventory
+          html.innerHTML += `<tr><td>${person.name}</td>
+            </td>
+            <td>${actions[person.intention]}
+            </td>
+          <td>${actions[person.current_action]}</td><td>${person.inventory
             .map((item) => item.name)
-            .join(",  ")}</td><tr>`;
+            .join(",  ")}
+            </td>
+            <td>${person.hunger}
+            </td>
+            <td>${person.thirst}
+            </td>
+            <tr>`;
         });
       }
 
