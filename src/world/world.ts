@@ -209,7 +209,17 @@ export class World {
             <td>${actions[person.intention]}
             </td>
           <td>${actions[person.current_action]}</td>
-          <td>${person.inventory.map((item) => item.name).join(",  ")}
+          <td>${JSON.stringify(
+            person.inventory
+              .map((item) => item.name)
+              .reduce(
+                (cnt: any, cur) => ((cnt[cur] = cnt[cur] + 1 || 1), cnt),
+                {}
+              )
+          )
+            .replace(/"/g, "")
+            .replace(/{/g, "")
+            .replace(/}/g, "")}
             </td>
           <td>${person.inventory.filter((x) => x.markedForTrade).length}
             </td>

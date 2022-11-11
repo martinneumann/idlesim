@@ -330,7 +330,8 @@ export class Person {
           this.inventory = this.inventory.filter(
             (x) => !exchange_items.includes(x)
           );
-          this.trade_timeout = 150;
+          this.trade_timeout = 70;
+          nearby_trader.trade_timeout = 70;
         } else {
           this.move_towards(this.current_movement_goal, this.skills.speed);
         }
