@@ -36,6 +36,8 @@ export class World {
       `Somewhere, a world created itself. It is called ${this.name} by those who inhabit it.`
     );
 
+    this.generate_river();
+
     for (let i = 0; i < get_random_whole_number(10, 10); i++) {
       this.people.push(
         new Person(
@@ -166,6 +168,34 @@ export class World {
       this.p5.line(this.width, 0, this.width, this.height);
       this.p5.line(0, this.height, this.width, this.height);
     };
+  }
+
+  generate_river() {
+    let source = {
+      x: get_random_whole_number(150, this.width),
+      y: get_random_whole_number(150, this.height),
+    };
+
+    let bias = Math.random() > 0.5 ? -1 : 1;
+    console.log(bias);
+
+    for (let a = 0; a <= 100; a++) {
+      this.objects.push(
+        new WorldObject(
+          "river water",
+          [object_descriptor.drinkable, object_descriptor.regenerative],
+          {
+            x: source.x,
+            y: source.y,
+            z: 1,
+          },
+          ""
+        )
+      );
+
+      source.x += get_random_whole_number(bias * 2, bias * 10);
+      source.y += get_random_whole_number(bias * 2, bias * 10);
+    }
   }
 
   simulation_loop() {

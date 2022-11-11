@@ -111,7 +111,8 @@ export class Person {
     } else {
       object.belongsTo = this.name;
       this.inventory.push(object);
-      world.objects.splice(world.objects.indexOf(object), 1);
+      if (!object.descriptors.includes(object_descriptor.regenerative))
+        world.objects.splice(world.objects.indexOf(object), 1);
       this.skills.perception += 1;
     }
   }
