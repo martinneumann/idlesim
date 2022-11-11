@@ -33,6 +33,7 @@ export class Person {
   intention: actions = actions.idle;
   current_movement_goal: position = { x: 1, y: 1, z: 1 };
   current_action: actions = actions.idle;
+  trade_timeout: number = 0;
 
   constructor(name: string, birthday: Date, position: position, world: World) {
     this.name = name;
@@ -43,6 +44,7 @@ export class Person {
   }
 
   body_functions(intensity: number): boolean {
+    this.trade_timeout > 0 ? this.trade_timeout-- : this.trade_timeout;
     if (this.hunger >= 100) {
       console.log(`${this.name} died from starvation.`);
       return false;
@@ -96,7 +98,7 @@ export class Person {
       this.intention = actions.forage;
       return;
     }
-    if (this.inventory.length > 3) {
+    if (this.inventory.length > 3 && this.trade_timeout === 0) {
       this.intention = actions.trade;
       return;
     }
@@ -287,18 +289,21 @@ export class Person {
         break;
 
       case actions.trade:
-        // Check if anyone is nearby who also wants to converse
-        let nearby_trader = this.current_people_in_range.find(
+        // Check if anyone is nearby who also wants to converse.
+        // Always gets the first one in list @TODO
+        let nearby_trader = this.current_people_in_range.filter(
           (x) => x.intention == actions.trade
-        );
+        )[0];
+
         if (
-          nearby_trader !== undefined &&
+          !!nearby_trader &&
           nearby_trader !== this &&
           nearby_trader.inventory.filter((x) => x.markedForTrade === true)
             .length > 0 &&
           this.inventory.filter((x) => x.markedForTrade === true).length > 0
         ) {
           // Exchange items that are set to tradeable and are more or less the same value.
+          this.current_action = actions.trade;
           let exchange_items = this.inventory.filter(
             (x) => x.markedForTrade === true
           );
@@ -310,18 +315,22 @@ export class Person {
             (acc, cur) => acc + cur.value,
             0
           );
-
-          // Exchange items for money
-          this.inventory = this.inventory.concat(other_exchange_items);
-          nearby_trader.inventory = nearby_trader.inventory.filter(
-            (x) => !other_exchange_items.find((y) => y === x)
+          let value_other_exchange_items = other_exchange_items.reduce(
+            (acc, cur) => acc + cur.value,
+            0
           );
 
-          // Remove money of this person and add it to the other person with the value of the goods
-          if (this.money > value_exchange_items) {
-            this.money -= value_exchange_items;
-            nearby_trader.money += value_exchange_items;
-          }
+          // Exchange items
+          this.inventory.push(...other_exchange_items);
+          nearby_trader.inventory = nearby_trader.inventory.filter(
+            (x) => !other_exchange_items.includes(x)
+          );
+
+          nearby_trader.inventory.push(...exchange_items);
+          this.inventory = this.inventory.filter(
+            (x) => !exchange_items.includes(x)
+          );
+          this.trade_timeout = 150;
         } else {
           this.move_towards(this.current_movement_goal, this.skills.speed);
         }

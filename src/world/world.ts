@@ -208,13 +208,16 @@ export class World {
             </td>
             <td>${actions[person.intention]}
             </td>
-          <td>${actions[person.current_action]}</td><td>${person.inventory
-            .map((item) => item.name)
-            .join(",  ")}
+          <td>${actions[person.current_action]}</td>
+          <td>${person.inventory.map((item) => item.name).join(",  ")}
+            </td>
+          <td>${person.inventory.filter((x) => x.markedForTrade).length}
             </td>
             <td>${person.hunger}
             </td>
             <td>${person.thirst}
+            </td>
+            <td>${person.trade_timeout}
             </td>
             <tr>`;
         });
