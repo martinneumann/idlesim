@@ -300,7 +300,6 @@ export class World {
       this.objects
         .filter((x) => x instanceof Tree)
         .forEach((tree: any) => {
-          console.log("tre");
           if (tree.timeToHarvest >= 0) {
             tree.timeToHarvest--;
           } else {
