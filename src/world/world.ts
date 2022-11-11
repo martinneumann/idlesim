@@ -7,7 +7,7 @@ import {
 import { Plant } from "../assets/plant";
 import { check_if_boundaries_are_reached } from "../geometry/functions/checkIfBoundariesAreReached";
 import MyCircle from "../graphics";
-import { WorldObject } from "../objects/worldObjects";
+import { Tree, WorldObject } from "../objects/worldObjects";
 import { decideWithProbability } from "../persons/behavior/decideWithProbability";
 import { get_nearby_people } from "../persons/behavior/getNearbyPeople";
 import { Person } from "../persons/person";
@@ -24,7 +24,7 @@ export class World {
   height: number = 700.0;
   z_depth: number = 100.0;
   people: Person[] = [];
-  objects: WorldObject[] = [];
+  objects: (WorldObject | Tree)[] = [];
   texts: text[] = [];
   plants: Plant[] = [];
   p5: p5;
@@ -37,6 +37,10 @@ export class World {
     );
 
     this.generate_river();
+    this.generate_fruit_tree();
+    this.generate_fruit_tree();
+    this.generate_fruit_tree();
+    this.generate_fruit_tree();
 
     for (let i = 0; i < get_random_whole_number(10, 10); i++) {
       this.people.push(
@@ -170,6 +174,32 @@ export class World {
     };
   }
 
+  generate_fruit_tree() {
+    let source = {
+      x: get_random_whole_number(150, this.width),
+      y: get_random_whole_number(150, this.height),
+    };
+
+    let fruit_type =
+      Math.random() > 0.5 ? object_descriptor.apple : object_descriptor.pear;
+
+    this.objects.push(
+      new Tree(
+        natural_fruit_forageable[
+          Math.floor(Math.random() * natural_fruit_forageable.length)
+        ] + " tree",
+        [object_descriptor.fruit_tree, fruit_type],
+        {
+          x: source.x,
+          y: source.y,
+          z: 1,
+        },
+        "",
+        30
+      )
+    );
+  }
+
   generate_river() {
     let source = {
       x: get_random_whole_number(150, this.width),
@@ -177,7 +207,6 @@ export class World {
     };
 
     let bias = Math.random() > 0.5 ? -1 : 1;
-    console.log(bias);
 
     for (let a = 0; a <= 100; a++) {
       this.objects.push(
@@ -266,6 +295,40 @@ export class World {
       /**
        * World actions
        **/
+
+      // Fruit
+      this.objects
+        .filter((x) => x instanceof Tree)
+        .forEach((tree: any) => {
+          console.log("tre");
+          if (tree.timeToHarvest >= 0) {
+            tree.timeToHarvest--;
+          } else {
+            let fruit_quantity = get_random_whole_number(0, 3);
+            for (let a = 0; a < fruit_quantity; a++) {
+              this.objects.push(
+                new WorldObject(
+                  object_descriptor[tree.descriptors[1].valueOf()],
+                  [object_descriptor.edible],
+                  {
+                    x: get_random_whole_number(
+                      tree.position.x - 15,
+                      tree.position.x + 15
+                    ),
+                    y: get_random_whole_number(
+                      tree.position.y - 15,
+                      tree.position.y + 15
+                    ),
+                    z: 1,
+                  },
+                  ""
+                )
+              );
+            }
+
+            tree.timeToHarvest = 30;
+          }
+        });
       if (this.objects.length < 10) {
         for (let i = 0; i < get_random_whole_number(1, 15); i++) {
           if (decideWithProbability(50)) {
