@@ -41,8 +41,10 @@ export class World {
     this.generate_fruit_tree();
     this.generate_fruit_tree();
     this.generate_fruit_tree();
+    this.generate_fruit_tree();
+    this.generate_fruit_tree();
 
-    for (let i = 0; i < get_random_whole_number(10, 10); i++) {
+    for (let i = 0; i < get_random_whole_number(3, 6); i++) {
       this.people.push(
         new Person(
           createName(),
@@ -195,7 +197,7 @@ export class World {
           z: 1,
         },
         "",
-        30
+        1
       )
     );
   }

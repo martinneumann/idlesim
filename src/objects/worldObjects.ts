@@ -22,7 +22,7 @@ export class WorldObject {
 }
 
 export class Tree extends WorldObject {
-  timeToHarvest: number = 20;
+  timeToHarvest: number = 50;
 
   constructor(
     name: string,

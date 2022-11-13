@@ -27,6 +27,7 @@ export class Person {
   relationships: Relationship[] = [];
   inventory: WorldObject[] = [];
   memory: Memory[] = [];
+  object_needs: object_descriptor[] = [];
 
   current_perceptions: WorldObject[] = [];
   current_people_in_range: Person[] = [];
@@ -62,43 +63,72 @@ export class Person {
 
   organize() {
     // Set superfluous items to markedForTrade if not hungry or thirsty
-    for (let item of this.inventory)
+    for (let item of this.inventory) {
       if (
         this.inventory.filter(
           (x) =>
             x.descriptors.includes(object_descriptor.edible) &&
             x.markedForTrade === false
-        ).length > 1 &&
+        ).length > 3 &&
         this.hunger <= 60
       ) {
         item.markedForTrade = true;
-        if (
-          this.inventory.filter(
-            (x) =>
-              x.descriptors.includes(object_descriptor.drinkable) &&
-              x.markedForTrade === false
-          ).length > 1 &&
-          this.thirst <= 60
-        ) {
-          item.markedForTrade = true;
-        }
       }
+      if (
+        this.inventory.filter(
+          (x) =>
+            x.descriptors.includes(object_descriptor.drinkable) &&
+            x.markedForTrade === false
+        ).length > 3 &&
+        this.thirst <= 60
+      ) {
+        item.markedForTrade = true;
+      }
+    }
   }
 
   decide() {
-    if (this.thirst > 50) {
-      this.intention = actions.drink;
+    if (this.thirst > 50 || this.hunger > 50) {
+      if (
+        this.inventory.some(
+          (x) =>
+            x.descriptors.some((y) => y === object_descriptor.drinkable) &&
+            this.thirst > 50
+        )
+      ) {
+        this.intention = actions.drink;
+        return;
+      }
+
+      if (
+        this.inventory.some(
+          (x) =>
+            x.descriptors.some((y) => y === object_descriptor.edible) &&
+            this.hunger > 50
+        )
+      ) {
+        this.intention = actions.eat;
+        return;
+      } else this.intention = actions.forage;
       return;
     }
-    if (this.hunger > 50) {
-      this.intention = actions.eat;
-      return;
-    }
-    if (this.inventory.length <= 3) {
+
+    if (
+      this.inventory.length <= 6 ||
+      this.inventory.filter((x) =>
+        x.descriptors.some((y) => y === object_descriptor.edible)
+      ).length < 6 ||
+      this.inventory.filter((x) =>
+        x.descriptors.some((y) => y === object_descriptor.drinkable)
+      ).length < 6
+    ) {
       this.intention = actions.forage;
       return;
     }
-    if (this.inventory.length > 3 && this.trade_timeout === 0) {
+    if (
+      this.inventory.find((x) => x.markedForTrade) &&
+      this.trade_timeout === 0
+    ) {
       this.intention = actions.trade;
       return;
     }
@@ -348,9 +378,32 @@ export class Person {
         break;
       case actions.forage:
         this.current_action = actions.forage;
+        let desired_descriptors = [];
+
+        // Hungry or thirsty
+        if (this.hunger > 50 || this.thirst > 50) {
+          if (this.hunger > 50)
+            desired_descriptors.push(object_descriptor.edible);
+          if (this.thirst > 50)
+            desired_descriptors.push(object_descriptor.drinkable);
+        } else {
+          // Not hungry or thirsty
+          if (
+            this.inventory.filter((x) =>
+              x.descriptors.some((y) => y === object_descriptor.drinkable)
+            ).length < 10
+          )
+            desired_descriptors.push(object_descriptor.drinkable);
+          if (
+            this.inventory.filter((x) =>
+              x.descriptors.some((y) => y === object_descriptor.edible)
+            ).length < 10
+          )
+            desired_descriptors.push(object_descriptor.edible);
+        }
+
         let nearby_object = this.check_for_free_nearby_object([
-          object_descriptor.edible,
-          object_descriptor.drinkable,
+          ...desired_descriptors,
         ]);
         if (nearby_object) {
           if (
