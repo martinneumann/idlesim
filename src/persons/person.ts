@@ -117,10 +117,10 @@ export class Person {
       this.inventory.length <= 6 ||
       this.inventory.filter((x) =>
         x.descriptors.some((y) => y === object_descriptor.edible)
-      ).length < 6 ||
+      ).length <= 6 ||
       this.inventory.filter((x) =>
         x.descriptors.some((y) => y === object_descriptor.drinkable)
-      ).length < 6
+      ).length <= 6
     ) {
       this.intention = actions.forage;
       return;
@@ -161,9 +161,107 @@ export class Person {
       perception_value * 10,
       this.world
     );
+
+    this.update_memories(this.current_perceptions);
+  }
+
+  update_memories(current_perceptions: WorldObject[]) {
+    // Forget old memories
+    this.memory.forEach((memory) => {
+      console.log(memory.age);
+    });
+    this.memory = this.memory.filter((x) => x.age < 3000);
+
+    // Add current perceptions
+    current_perceptions
+      .filter((perception) =>
+        perception.descriptors.some(
+          (perc) => perc === object_descriptor.fruit_tree
+        )
+      )
+      .forEach((perception) => {
+        let mem = this.memory.find((memory) =>
+          memory.related_objects.find((object) => object === perception)
+        );
+        if (mem === undefined) {
+          this.memory.push({
+            description: perception.name,
+            position: perception.position,
+            related_objects: [perception],
+            age: 0,
+          } as Memory);
+        } else {
+          mem.age = 0;
+        }
+      });
+
+    this.memory.forEach((memory) => {
+      console.log(memory.description);
+      memory.age += 1;
+    });
   }
 
   get_status() {}
+
+  get_distance(pos1: position, pos2: position) {
+    return Math.sqrt(
+      Math.pow(pos1.x - pos2.x, 2) +
+        Math.pow(pos1.y - pos2.y, 2) +
+        Math.pow(pos1.z - pos2.z, 2)
+    );
+  }
+
+  get_closest_object(
+    objects: WorldObject[],
+    own_position: position,
+    exclusion_distance: number
+  ) {
+    let closest = objects
+      .map((obj) => ({
+        object: obj,
+        distance: this.get_distance(own_position, obj.position),
+      }))
+      .filter((x) => x.distance > exclusion_distance)
+      .sort((x) => x.distance)[0];
+
+    // console.log(JSON.stringify(objects));
+    return closest;
+  }
+
+  get_objects_with_descriptors(
+    objects: WorldObject[],
+    descriptors: object_descriptor[]
+  ) {
+    let test = objects.filter((object) =>
+      object.descriptors.some((descriptor) => descriptors.includes(descriptor))
+    );
+    return test;
+  }
+
+  /**
+   * Only fruit trees for now
+   * @param descriptor what to look for. gets the first one in the memory.
+   */
+  find_nearest_memory_fit(
+    descriptors: object_descriptor[],
+    maxAge = 1000,
+    minAge = 100
+  ) {
+    const returnval = this.get_closest_object(
+      this.get_objects_with_descriptors(
+        this.memory
+          .filter((x) => x.age < maxAge)
+          .filter((x) => x.age > minAge)
+          .map((x) => x.related_objects)
+          .flat(),
+        descriptors
+      ),
+      this.position,
+      1
+    );
+
+    return returnval;
+  }
 
   set_random_current_goal_position(check_if_already_set: boolean) {
     if (check_if_already_set) {
@@ -229,13 +327,13 @@ export class Person {
   }
 
   check_for_free_nearby_object(
-    descriptor: object_descriptor[]
+    descriptors: object_descriptor[]
   ): WorldObject | undefined {
-    return this.current_perceptions.find(
+    return this.current_perceptions.filter(
       (x) =>
-        x.descriptors.find((y) => y === descriptor.find((x) => x === y)) &&
+        x.descriptors.some((y) => descriptors.some((desc) => desc === y)) &&
         x.belongsTo == ""
-    );
+    )[0];
   }
 
   do_action(): boolean {
@@ -364,6 +462,7 @@ export class Person {
           this.trade_timeout = 70;
           nearby_trader.trade_timeout = 70;
         } else {
+          // Look for other trader
           this.move_towards(this.current_movement_goal, this.skills.speed);
         }
         break;
@@ -382,10 +481,10 @@ export class Person {
 
         // Hungry or thirsty
         if (this.hunger > 50 || this.thirst > 50) {
-          if (this.hunger > 50)
-            desired_descriptors.push(object_descriptor.edible);
           if (this.thirst > 50)
             desired_descriptors.push(object_descriptor.drinkable);
+          if (this.hunger > 50)
+            desired_descriptors.push(object_descriptor.edible);
         } else {
           // Not hungry or thirsty
           if (
@@ -402,9 +501,16 @@ export class Person {
             desired_descriptors.push(object_descriptor.edible);
         }
 
+        console.log(
+          `Desired descriptors: ${desired_descriptors.map(
+            (x) => object_descriptor[x]
+          )}`
+        );
+
         let nearby_object = this.check_for_free_nearby_object([
           ...desired_descriptors,
         ]);
+        console.log(`Nearby object is ${nearby_object?.name}`);
         if (nearby_object) {
           if (
             is_in_reach(
@@ -420,7 +526,19 @@ export class Person {
             break;
           }
         } else {
-          this.set_random_current_goal_position(false);
+          if (desired_descriptors.includes(object_descriptor.edible)) {
+            desired_descriptors.push(object_descriptor.fruit_tree);
+          }
+          const memory_object = this.find_nearest_memory_fit(
+            desired_descriptors,
+            100
+          );
+          if (memory_object) {
+            this.current_movement_goal = memory_object.object.position;
+            console.log(
+              `Moving towards ${memory_object.object.name} from memory`
+            );
+          } else this.set_random_current_goal_position(false);
           this.move_towards(this.current_movement_goal, this.skills.speed);
           break;
         }
