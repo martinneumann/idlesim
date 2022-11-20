@@ -28,6 +28,7 @@ export class World {
   texts: text[] = [];
   plants: Plant[] = [];
   p5: p5;
+  cam: p5.Camera | undefined;
 
   constructor() {
     this.name = createName();
@@ -37,6 +38,9 @@ export class World {
     );
 
     this.generate_river();
+    this.generate_river();
+    this.generate_river();
+    this.generate_river();
     this.generate_fruit_tree();
     this.generate_fruit_tree();
     this.generate_fruit_tree();
@@ -44,7 +48,7 @@ export class World {
     this.generate_fruit_tree();
     this.generate_fruit_tree();
 
-    for (let i = 0; i < get_random_whole_number(3, 6); i++) {
+    for (let i = 0; i < 1; i++) {
       this.people.push(
         new Person(
           createName(),
@@ -74,6 +78,8 @@ export class World {
     };
 
     p5.mouseClicked = () => {
+      p5.translate(20, 20);
+
       // Get nearest person
       get_nearby_people(
         { x: p5.mouseX, y: this.p5.mouseY, z: 0 },
@@ -289,6 +295,8 @@ export class World {
             <td>${person.thirst}
             </td>
             <td>${person.trade_timeout}
+            </td>
+            <td>${person.memory.length}
             </td>
             <tr>`;
         });
