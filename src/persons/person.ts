@@ -1,4 +1,7 @@
-import { get_random_position_2d } from "../geometry/functions/getRandomPosition";
+import {
+  get_random_position_2d,
+  get_random_position_2d_with_min_distance,
+} from "../geometry/functions/getRandomPosition";
 import { position } from "../geometry/position";
 import { WorldObject } from "../objects/worldObjects";
 import { actions } from "../util/actions";
@@ -167,9 +170,7 @@ export class Person {
 
   update_memories(current_perceptions: WorldObject[]) {
     // Forget old memories
-    this.memory.forEach((memory) => {
-      console.log(memory.age);
-    });
+    this.memory.forEach((memory) => {});
     this.memory = this.memory.filter((x) => x.age < 3000);
 
     // Add current perceptions
@@ -196,7 +197,6 @@ export class Person {
       });
 
     this.memory.forEach((memory) => {
-      console.log(memory.description);
       memory.age += 1;
     });
   }
@@ -224,7 +224,6 @@ export class Person {
       .filter((x) => x.distance > exclusion_distance)
       .sort((x) => x.distance)[0];
 
-    // console.log(JSON.stringify(objects));
     return closest;
   }
 
@@ -269,7 +268,10 @@ export class Person {
         return;
       }
     }
-    this.current_movement_goal = get_random_position_2d(this.world);
+    this.current_movement_goal = get_random_position_2d_with_min_distance(
+      this.world,
+      this.position
+    );
   }
 
   set_center_as_goal_position() {
@@ -501,16 +503,9 @@ export class Person {
             desired_descriptors.push(object_descriptor.edible);
         }
 
-        console.log(
-          `Desired descriptors: ${desired_descriptors.map(
-            (x) => object_descriptor[x]
-          )}`
-        );
-
         let nearby_object = this.check_for_free_nearby_object([
           ...desired_descriptors,
         ]);
-        console.log(`Nearby object is ${nearby_object?.name}`);
         if (nearby_object) {
           if (
             is_in_reach(
@@ -535,9 +530,6 @@ export class Person {
           );
           if (memory_object) {
             this.current_movement_goal = memory_object.object.position;
-            console.log(
-              `Moving towards ${memory_object.object.name} from memory`
-            );
           } else this.set_random_current_goal_position(false);
           this.move_towards(this.current_movement_goal, this.skills.speed);
           break;

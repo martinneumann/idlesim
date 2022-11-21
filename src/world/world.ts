@@ -48,7 +48,7 @@ export class World {
     this.generate_fruit_tree();
     this.generate_fruit_tree();
 
-    for (let i = 0; i < 1; i++) {
+    for (let i = 0; i < get_random_whole_number(3, 15); i++) {
       this.people.push(
         new Person(
           createName(),
@@ -159,26 +159,32 @@ export class World {
           ),
           3,
           get_color_by_object_type(object.descriptors[0]),
-          object.name
+          object.descriptors.some((x) => x === object_descriptor.fruit_tree)
+            ? object.name
+            : ""
         )
       );
     });
 
     // Text
+    /*
     this.texts.forEach((_text) => {
       this.p5.text(_text.text, _text.x, _text.y);
     });
+    */
 
     // Draw
     this.p5.draw = () => {
       people_circles.forEach((circle) => circle.draw());
       object_circles.forEach((circle) => circle.draw());
       // Draw lines around the world width and height
+      /*
       this.p5.stroke(255, 255, 255);
       this.p5.line(0, 0, this.width, 0);
       this.p5.line(0, 0, 0, this.height);
       this.p5.line(this.width, 0, this.width, this.height);
       this.p5.line(0, this.height, this.width, this.height);
+      */
     };
   }
 
