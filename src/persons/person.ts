@@ -339,7 +339,7 @@ export class Person {
   }
 
   do_action(): boolean {
-    let action_intensity = 1;
+    let action_intensity = 0.1;
     switch (this.intention) {
       case actions.idle:
         this.current_action = actions.idle;

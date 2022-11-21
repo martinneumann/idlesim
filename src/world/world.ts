@@ -125,11 +125,12 @@ export class World {
             person.position.y,
             person.position.z
           ),
-          5,
+          15,
           [255, 100, 0],
           person.name
         )
       );
+      /*
       people_circles.push(
         new MyCircle(
           this.p5,
@@ -144,6 +145,7 @@ export class World {
           100
         )
       );
+      */
     });
 
     // Objects
@@ -296,9 +298,9 @@ export class World {
             </td>
           <td>${person.inventory.filter((x) => x.markedForTrade).length}
             </td>
-            <td>${person.hunger}
+            <td>${Math.round(person.hunger)}
             </td>
-            <td>${person.thirst}
+            <td>${Math.round(person.thirst)}
             </td>
             <td>${person.trade_timeout}
             </td>
