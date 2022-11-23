@@ -3,8 +3,9 @@ import {
   get_random_position_2d_with_min_distance,
 } from "../geometry/functions/getRandomPosition";
 import { position } from "../geometry/position";
-import { WorldObject } from "../objects/worldObjects";
+import { Tree, WorldObject } from "../objects/worldObjects";
 import { actions } from "../util/actions";
+import { get_random_whole_number } from "../util/functions/getRandomWholeNumber";
 import { is_in_reach } from "../util/functions/isInReach";
 import { object_descriptor } from "../util/objectDescriptor";
 import { World } from "../world/world";
@@ -136,6 +137,26 @@ export class Person {
       return;
     }
 
+    // Fell tree
+    if (
+      this.inventory.filter((x) =>
+        x.descriptors.some((y) => y === object_descriptor.building_material)
+      ).length <= 3
+    ) {
+      this.intention = actions.fell_tree;
+      return;
+    }
+    if (
+      this.inventory.filter((x) =>
+        x.descriptors.some((y) => y === object_descriptor.building_material)
+      ).length > 3 &&
+      !this.memory.find((x) => x.description === "This is where my home is")
+    ) {
+      this.intention = actions.build;
+      return;
+    }
+
+    // Idle
     this.intention = actions.idle;
   }
 
@@ -147,6 +168,35 @@ export class Person {
       if (!object.descriptors.includes(object_descriptor.regenerative))
         world.objects.splice(world.objects.indexOf(object), 1);
       this.skills.perception += 1;
+    }
+  }
+
+  chop_tree(tree: Tree, world: World) {
+    tree.health -= get_random_whole_number(1, 5);
+    if (tree.health < 0) {
+      for (let i = 0; i < 10; i++) {
+        this.world.objects.push(
+          new WorldObject(
+            "wood",
+            [object_descriptor.building_material],
+            {
+              x: tree.position.x + i * 2,
+              y: tree.position.y + i,
+              z: tree.position.z,
+            },
+            ""
+          )
+        );
+      }
+      this.inventory.push({
+        belongsTo: this.name,
+        descriptors: [object_descriptor.building_material],
+        markedForTrade: false,
+        name: "wood",
+        position: this.position,
+        value: 3,
+      } as WorldObject);
+      world.objects.splice(world.objects.indexOf(tree), 1);
     }
   }
 
@@ -343,6 +393,22 @@ export class Person {
     switch (this.intention) {
       case actions.idle:
         this.current_action = actions.idle;
+
+        // Move to home, if exists
+        let homeMemory = this.memory.find(
+          (x) => x.description === "This is where my home is"
+        );
+        if (homeMemory) {
+          let pos = this.memory.find(
+            (x) => x.description === "This is where my home is"
+          )?.position;
+
+          if (pos && this.current_movement_goal !== pos)
+            this.current_movement_goal = pos;
+          if (pos && !this.check_if_goal_position_reached()) {
+            this.move_towards(this.current_movement_goal, this.skills.speed);
+          }
+        }
         break;
 
       case actions.drink:
@@ -472,10 +538,79 @@ export class Person {
       case actions.pick_up:
         break;
       case actions.build:
+        if (
+          this.inventory.filter((x) =>
+            x.descriptors.some((y) => y === object_descriptor.building_material)
+          ).length > 3
+        ) {
+          console.log("building");
+          // @todo: remove wood form inventory
+
+          let newShack = {
+            belongsTo: this.name,
+            descriptors: [object_descriptor.wood_shack],
+            markedForTrade: false,
+            name: this.name + "s wooden shack",
+            position: this.position,
+            value: 100,
+          } as WorldObject;
+          this.world.objects.push(newShack);
+          this.memory.push({
+            age: 0,
+            description: "This is where my home is",
+            position: this.position,
+            related_objects: [],
+          } as Memory);
+          console.log(JSON.stringify(this.memory));
+        } else {
+          console.log("could not build");
+          let a =
+            this.inventory.filter((x) =>
+              x.descriptors.some(
+                (y) => y === object_descriptor.building_material
+              )
+            ).length > 3;
+          console.log(a);
+        }
+
+        this.intention = actions.idle;
         break;
       case actions.bear_child:
         break;
       case actions.marry:
+        break;
+
+      case actions.fell_tree:
+        let nearby_wood = this.check_for_free_nearby_object([
+          object_descriptor.building_material,
+        ]);
+        if (nearby_wood) {
+          if (
+            is_in_reach(nearby_wood.position, this.position, this.skills.reach)
+          ) {
+            this.pick_up(nearby_wood, this.world);
+            break;
+          } else {
+            this.move_towards(nearby_wood.position, this.skills.speed);
+            break;
+          }
+        }
+        let nearby_tree = this.check_for_free_nearby_object([
+          object_descriptor.walnut_tree,
+          object_descriptor.willow_tree,
+        ]) as Tree;
+        if (nearby_tree) {
+          if (
+            is_in_reach(nearby_tree.position, this.position, this.skills.reach)
+          ) {
+            this.current_action = actions.fell_tree;
+            this.chop_tree(nearby_tree, this.world);
+            break;
+          } else {
+            this.move_towards(nearby_tree.position, this.skills.speed);
+            break;
+          }
+        }
         break;
       case actions.forage:
         this.current_action = actions.forage;
@@ -530,8 +665,9 @@ export class Person {
           );
           if (memory_object) {
             this.current_movement_goal = memory_object.object.position;
-          } else this.set_random_current_goal_position(false);
-          this.move_towards(this.current_movement_goal, this.skills.speed);
+          } else if (this.check_if_goal_position_reached())
+            this.set_random_current_goal_position(false);
+          else this.move_towards(this.current_movement_goal, this.skills.speed);
           break;
         }
     }

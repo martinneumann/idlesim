@@ -23,6 +23,7 @@ export class WorldObject {
 
 export class Tree extends WorldObject {
   timeToHarvest: number = 50;
+  health = Math.floor(Math.random() + 5) * 20;
 
   constructor(
     name: string,

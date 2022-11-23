@@ -9,4 +9,7 @@ export enum object_descriptor {
   apple = 8,
   pear = 9,
   in_season = 10,
+  willow_tree = 11,
+  walnut_tree = 12,
+  wood_shack = 13,
 }

@@ -1,9 +1,6 @@
 import p5 from "p5";
 import { timer } from "rxjs";
-import {
-  natural_drinks,
-  natural_fruit_forageable,
-} from "../assets/environment";
+import { fruit_trees, natural_drinks } from "../assets/environment";
 import { Plant } from "../assets/plant";
 import { check_if_boundaries_are_reached } from "../geometry/functions/checkIfBoundariesAreReached";
 import MyCircle from "../graphics";
@@ -16,7 +13,7 @@ import { get_random_whole_number } from "../util/functions/getRandomWholeNumber"
 import { createName } from "../util/nameCreators";
 import { object_descriptor } from "../util/objectDescriptor";
 import { text } from "../util/text";
-import { get_color_by_object_type } from "../util/utils";
+import { get_color_by_object_type, get_random_element } from "../util/utils";
 
 export class World {
   name: string;
@@ -41,12 +38,24 @@ export class World {
     this.generate_river();
     this.generate_river();
     this.generate_river();
-    this.generate_fruit_tree();
-    this.generate_fruit_tree();
-    this.generate_fruit_tree();
-    this.generate_fruit_tree();
-    this.generate_fruit_tree();
-    this.generate_fruit_tree();
+    this.generate_tree(object_descriptor.fruit_tree);
+    this.generate_tree(object_descriptor.fruit_tree);
+    this.generate_tree(object_descriptor.fruit_tree);
+    this.generate_tree(object_descriptor.fruit_tree);
+    this.generate_tree(object_descriptor.fruit_tree);
+    this.generate_tree(object_descriptor.willow_tree);
+    this.generate_tree(object_descriptor.willow_tree);
+    this.generate_tree(object_descriptor.willow_tree);
+    this.generate_tree(object_descriptor.willow_tree);
+    this.generate_tree(object_descriptor.walnut_tree);
+    this.generate_tree(object_descriptor.walnut_tree);
+    this.generate_tree(object_descriptor.walnut_tree);
+    this.generate_tree(object_descriptor.walnut_tree);
+    this.generate_tree(object_descriptor.walnut_tree);
+    this.generate_tree(object_descriptor.walnut_tree);
+    this.generate_tree(object_descriptor.walnut_tree);
+    this.generate_tree(object_descriptor.walnut_tree);
+    this.generate_tree(object_descriptor.walnut_tree);
 
     for (let i = 0; i < get_random_whole_number(3, 15); i++) {
       this.people.push(
@@ -113,6 +122,7 @@ export class World {
 
   graphics_loop() {
     this.p5.clear();
+    this.p5.background("#348C31");
     const people_circles: MyCircle[] = [];
 
     // People
@@ -151,6 +161,13 @@ export class World {
     // Objects
     const object_circles: MyCircle[] = [];
     this.objects.forEach((object) => {
+      let size = 1;
+      if (object.descriptors.some((x) => x === object_descriptor.wood_shack)) {
+        size = 10;
+      }
+      if (object.descriptors.some((x) => x === object_descriptor.fruit_tree)) {
+        size = 2;
+      }
       object_circles.push(
         new MyCircle(
           this.p5,
@@ -159,9 +176,15 @@ export class World {
             object.position.y,
             object.position.z
           ),
-          3,
+          size,
           get_color_by_object_type(object.descriptors[0]),
-          object.descriptors.some((x) => x === object_descriptor.fruit_tree)
+          object.descriptors.some(
+            (x) =>
+              x === object_descriptor.fruit_tree ||
+              x === object_descriptor.walnut_tree ||
+              x === object_descriptor.willow_tree ||
+              x === object_descriptor.wood_shack
+          )
             ? object.name
             : ""
         )
@@ -190,21 +213,30 @@ export class World {
     };
   }
 
-  generate_fruit_tree() {
+  generate_tree(
+    type:
+      | object_descriptor.fruit_tree
+      | object_descriptor.walnut_tree
+      | object_descriptor.willow_tree
+  ) {
     let source = {
       x: get_random_whole_number(150, this.width),
       y: get_random_whole_number(150, this.height),
     };
 
-    let fruit_type =
-      Math.random() > 0.5 ? object_descriptor.apple : object_descriptor.pear;
+    let descriptors = [type];
+    if (type === object_descriptor.fruit_tree) {
+      let fruit_type = get_random_element([
+        object_descriptor.apple,
+        object_descriptor.pear,
+      ]);
+      descriptors.push(fruit_type);
+    }
 
     this.objects.push(
       new Tree(
-        natural_fruit_forageable[
-          Math.floor(Math.random() * natural_fruit_forageable.length)
-        ] + " tree",
-        [object_descriptor.fruit_tree, fruit_type],
+        object_descriptor[type],
+        descriptors,
         {
           x: source.x,
           y: source.y,
@@ -316,7 +348,11 @@ export class World {
 
       // Fruit
       this.objects
-        .filter((x) => x instanceof Tree)
+        .filter(
+          (x) =>
+            x instanceof Tree &&
+            x.descriptors.some((y) => y === object_descriptor.fruit_tree)
+        )
         .forEach((tree: any) => {
           if (tree.timeToHarvest >= 0) {
             tree.timeToHarvest--;
@@ -369,8 +405,11 @@ export class World {
           if (decideWithProbability(50)) {
             this.objects.push(
               new WorldObject(
-                natural_fruit_forageable[
-                  get_random_whole_number(0, natural_fruit_forageable.length)
+                object_descriptor[
+                  get_random_element([
+                    object_descriptor.apple,
+                    object_descriptor.pear,
+                  ])
                 ],
                 [object_descriptor.edible],
                 {
