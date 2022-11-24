@@ -681,6 +681,7 @@ export class Person {
         }
       case actions.talk:
         this.current_action = actions.talk;
+        if (this.talk_timeout > 0) break;
         let partners = get_nearby_people(this.position, 5, this.world);
         if (partners.length > 0) {
           let partner = partners[0];
