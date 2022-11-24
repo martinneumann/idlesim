@@ -1,3 +1,4 @@
+import { helpers } from "rx";
 import {
   get_random_position_2d,
   get_random_position_2d_with_min_distance,
@@ -8,6 +9,7 @@ import { actions } from "../util/actions";
 import { get_random_whole_number } from "../util/functions/getRandomWholeNumber";
 import { is_in_reach } from "../util/functions/isInReach";
 import { object_descriptor } from "../util/objectDescriptor";
+import { get_random_element } from "../util/utils";
 import { World } from "../world/world";
 import { get_nearby_people } from "./behavior/getNearbyPeople";
 import { get_nearby_objects } from "./functions/getNearbyObjects";
@@ -39,6 +41,7 @@ export class Person {
   current_movement_goal: position = { x: 1, y: 1, z: 1 };
   current_action: actions = actions.idle;
   trade_timeout: number = 0;
+  talk_timeout: number = 0;
 
   constructor(name: string, birthday: Date, position: position, world: World) {
     this.name = name;
@@ -50,6 +53,7 @@ export class Person {
 
   body_functions(intensity: number): boolean {
     this.trade_timeout > 0 ? this.trade_timeout-- : this.trade_timeout;
+    this.talk_timeout > 0 ? this.talk_timeout-- : this.talk_timeout;
     if (this.hunger >= 100) {
       console.log(`${this.name} died from starvation.`);
       return false;
@@ -153,6 +157,13 @@ export class Person {
       !this.memory.find((x) => x.description === "This is where my home is")
     ) {
       this.intention = actions.build;
+      return;
+    }
+
+    let a = get_nearby_people(this.position, 10, this.world);
+    console.log(a.length);
+    if (a.length > 0) {
+      this.intention = actions.talk;
       return;
     }
 
@@ -577,8 +588,6 @@ export class Person {
         break;
       case actions.bear_child:
         break;
-      case actions.marry:
-        break;
 
       case actions.fell_tree:
         let nearby_wood = this.check_for_free_nearby_object([
@@ -669,6 +678,52 @@ export class Person {
             this.set_random_current_goal_position(false);
           else this.move_towards(this.current_movement_goal, this.skills.speed);
           break;
+        }
+      case actions.talk:
+        this.current_action = actions.talk;
+        let partners = get_nearby_people(this.position, 5, this.world);
+        if (partners.length > 0) {
+          let partner = partners[0];
+          let topic = get_random_element(this.memory) as Memory;
+          let message;
+          if (topic.description.includes("home")) {
+            message = `${this.get_distance(
+              this.position,
+              topic.position
+            )} steps from here. ${topic.description}`;
+
+            if (
+              !partner.memory.find(
+                (x) => x.related_objects === topic.related_objects
+              )
+            ) {
+              partner.memory.push({
+                age: 0,
+                description: "House of " + this.name,
+                position: topic.position,
+              } as Memory);
+            }
+          } else {
+            message = `I know there is a ${
+              topic.description
+            } about ${this.get_distance(
+              this.position,
+              topic.position
+            )} steps from here. I was there ${topic.age} hours ago.`;
+
+            if (
+              !partner.memory.find(
+                (x) => x.related_objects === topic.related_objects
+              )
+            ) {
+              partner.memory.push(topic);
+            }
+          }
+          this.talk_timeout = 200;
+          this.world.append_to_log(
+            this.name,
+            `To ${partner.name}: ${message}.`
+          );
         }
     }
 

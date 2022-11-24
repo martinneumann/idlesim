@@ -20,3 +20,8 @@
   text-align: center;
   margin-left: 48px;
 }
+
+.log-table {
+  overflow: scroll;
+  height: 600px;
+}

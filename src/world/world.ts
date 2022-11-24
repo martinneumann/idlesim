@@ -122,7 +122,7 @@ export class World {
 
   graphics_loop() {
     this.p5.clear();
-    this.p5.background("#348C31");
+    this.p5.background("#C2EFB3");
     const people_circles: MyCircle[] = [];
 
     // People
@@ -273,6 +273,13 @@ export class World {
       source.x += get_random_whole_number(bias * 2, bias * 10);
       source.y += get_random_whole_number(bias * 2, bias * 10);
     }
+  }
+
+  append_to_log(name: string, message: string) {
+    const html = document.getElementById("log-body") as HTMLElement;
+    html.innerHTML += `<tr><td>${name}</td>
+    <td>${message}</td></tr>
+    `;
   }
 
   simulation_loop() {

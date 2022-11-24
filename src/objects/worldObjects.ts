@@ -19,6 +19,8 @@ export class WorldObject {
   belongsTo: string = "";
   markedForTrade: boolean = false;
   value: number = 1;
+  age: number = 0;
+  status: "alive" | "dead" | "rotten" = "alive";
 }
 
 export class Tree extends WorldObject {

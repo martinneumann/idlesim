@@ -7,7 +7,7 @@ export enum actions {
   pick_up = 6,
   fell_tree = 7,
   build = 8,
-  marry = 9,
+  talk = 9,
   bear_child = 10,
   sleep = 11,
   search = 12,
