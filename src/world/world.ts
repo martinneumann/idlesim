@@ -15,10 +15,13 @@ import { object_descriptor } from "../util/objectDescriptor";
 import { text } from "../util/text";
 import { get_color_by_object_type, get_random_element } from "../util/utils";
 
+const WIDTH = window.innerWidth;
+const HEIGHT = window.innerHeight;
+
 export class World {
   name: string;
-  width: number = 700.0;
-  height: number = 700.0;
+  width: number = WIDTH;
+  height: number = HEIGHT;
   z_depth: number = 100.0;
   people: Person[] = [];
   objects: (WorldObject | Tree)[] = [];
@@ -79,7 +82,7 @@ export class World {
     // The sketch setup method
     p5.setup = () => {
       // Creating and positioning the canvas
-      const canvas = p5.createCanvas(800, 800);
+      const canvas = p5.createCanvas(this.width, this.height);
       canvas.parent("app");
 
       // Configuring the canvas

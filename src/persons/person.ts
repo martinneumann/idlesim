@@ -688,9 +688,8 @@ export class Person {
           let topic = get_random_element(this.memory) as Memory;
           let message;
           if (topic.description.includes("home")) {
-            message = `${this.get_distance(
-              this.position,
-              topic.position
+            message = `${Math.floor(
+              this.get_distance(this.position, topic.position)
             )} steps from here. ${topic.description}`;
 
             if (
@@ -707,9 +706,8 @@ export class Person {
           } else {
             message = `I know there is a ${
               topic.description
-            } about ${this.get_distance(
-              this.position,
-              topic.position
+            } about ${Math.floor(
+              this.get_distance(this.position, topic.position)
             )} steps from here. I was there ${topic.age} hours ago.`;
 
             if (

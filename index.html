@@ -4,44 +4,56 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>idlesim v2</title>
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/@picocss/pico@latest/css/pico.min.css"
-    />
+    <link rel="stylesheet" href="./dist/pico.min.css" />
     <link rel="stylesheet" href="./style.css" />
     <script type="module" src="./dist/bundle.js"></script>
   </head>
 
   <body>
-    <div class="outer">
-      <div class="inner" id="app"></div>
-      <table class="status-table">
-        <thead>
-          <tr>
-            <th scope="col">Name</th>
-            <th scope="col">Intention</th>
-            <th scope="col">Activity</th>
-            <th scope="col">Inventory</th>
-            <th scope="col">Tradeables</th>
-            <th scope="col">Hunger</th>
-            <th scope="col">Thirst</th>
-            <th scope="col">Trade timeout</th>
-            <th scope="col">Memories</th>
-          </tr>
-        </thead>
-        <tbody id="table-body"></tbody>
-      </table>
-      <div class="log">
-        <table class="log-table">
-          <thead>
-            <tr>
-              <th scope="col">Name</th>
-              <th scope="col">Message</th>
-            </tr>
-          </thead>
-          <tbody id="log-body"></tbody>
-        </table>
-      </div>
-    </div>
+    <main style="padding: 0px">
+      <div class="graphics-window" id="app"></div>
+      <nav>
+      <details class="menu-toggle">
+        <summary>Lore</summary>
+        <div class="lore-content">
+          <details>
+            <summary>Status</summary>
+            <figure>
+              <table class="status-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Name</th>
+                    <th scope="col">Intention</th>
+                    <th scope="col">Activity</th>
+                    <th scope="col">Inventory</th>
+                    <th scope="col">Tradeables</th>
+                    <th scope="col">Hunger</th>
+                    <th scope="col">Thirst</th>
+                    <th scope="col">Trade timeout</th>
+                    <th scope="col">Memories</th>
+                  </tr>
+                </thead>
+                <tbody id="table-body"></tbody>
+              </table>
+            </figure>
+          </details>
+
+          <details>
+            <summary>Conversations</summary>
+            <figure>
+              <table class="log-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Name</th>
+                    <th scope="col">Message</th>
+                  </tr>
+                </thead>
+                <tbody id="log-body"></tbody>
+              </table>
+            </figure>
+          </details>
+        </div>
+      </details>
+    </main>
   </body>
 </html>
