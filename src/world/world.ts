@@ -3,6 +3,7 @@ import { timer } from "rxjs";
 import { fruit_trees, natural_drinks } from "../assets/environment";
 import { Plant } from "../assets/plant";
 import { check_if_boundaries_are_reached } from "../geometry/functions/checkIfBoundariesAreReached";
+import { position } from "../geometry/position";
 import MyCircle from "../graphics";
 import { Tree, WorldObject } from "../objects/worldObjects";
 import { decideWithProbability } from "../persons/behavior/decideWithProbability";
@@ -64,7 +65,6 @@ export class World {
       this.people.push(
         new Person(
           createName(),
-          new Date(Date.now()),
           {
             x: get_random_whole_number(0, this.width),
             y: get_random_whole_number(0, this.height),
@@ -90,6 +90,16 @@ export class World {
     };
 
     p5.mouseClicked = () => {
+      let a = (<HTMLInputElement>document.getElementById("godmode"))?.checked;
+      console.log(a);
+      if (a)
+        this.people.push(
+          new Person(
+            createName(),
+            { x: p5.mouseX, y: p5.mouseY, z: 0 } as position,
+            this
+          )
+        );
       p5.translate(20, 20);
 
       // Get nearest person

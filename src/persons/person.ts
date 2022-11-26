@@ -28,8 +28,6 @@ export class Person {
 
   money: number = 100;
 
-  birthday: Date;
-
   relationships: Relationship[] = [];
   inventory: WorldObject[] = [];
   memory: Memory[] = [];
@@ -43,9 +41,8 @@ export class Person {
   trade_timeout: number = 0;
   talk_timeout: number = 0;
 
-  constructor(name: string, birthday: Date, position: position, world: World) {
+  constructor(name: string, position: position, world: World) {
     this.name = name;
-    this.birthday = birthday;
     this.position = position;
     this.world = world;
     console.log(`A person by the name of ${this.name} now exists.`);
@@ -161,7 +158,6 @@ export class Person {
     }
 
     let a = get_nearby_people(this.position, 10, this.world);
-    console.log(a.length);
     if (a.length > 0) {
       this.intention = actions.talk;
       return;
@@ -554,7 +550,6 @@ export class Person {
             x.descriptors.some((y) => y === object_descriptor.building_material)
           ).length > 3
         ) {
-          console.log("building");
           // @todo: remove wood form inventory
 
           let newShack = {
@@ -572,16 +567,13 @@ export class Person {
             position: this.position,
             related_objects: [],
           } as Memory);
-          console.log(JSON.stringify(this.memory));
         } else {
-          console.log("could not build");
           let a =
             this.inventory.filter((x) =>
               x.descriptors.some(
                 (y) => y === object_descriptor.building_material
               )
             ).length > 3;
-          console.log(a);
         }
 
         this.intention = actions.idle;

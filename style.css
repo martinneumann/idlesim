@@ -35,6 +35,23 @@
   overflow-y: scroll;
 }
 
+.controls {
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
+  width: 80%;
+  justify-content: center;
+  display: flex;
+  flex-direction: row;
+}
+
+.controls > button {
+  margin: 0.5rem;
+}
+
+.log-table {
+  margin-bottom: 10%;
+}
+
 details {
   width: 100%;
 }
