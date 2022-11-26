@@ -25,11 +25,18 @@ export class Person {
   position: position = { x: 1, y: 1, z: 1 };
   hunger: number = 0;
   thirst: number = 0;
+  energy: number = 100;
 
-  money: number = 100;
+  money: number = 0;
 
   relationships: Relationship[] = [];
+
+  // Objects carried on the person
   inventory: WorldObject[] = [];
+
+  // Objects are considered home
+  homes: WorldObject[] = [];
+
   memory: Memory[] = [];
   object_needs: object_descriptor[] = [];
 
@@ -60,6 +67,7 @@ export class Person {
     } else {
       this.hunger += intensity;
       this.thirst += intensity;
+      this.energy -= intensity;
       return true;
     }
   }
@@ -93,7 +101,11 @@ export class Person {
   }
 
   decide() {
-    if (this.thirst > 50 || this.hunger > 50) {
+    // Eat or drink
+    if (
+      (this.thirst > 50 || this.hunger > 50) &&
+      this.current_action !== actions.sleep
+    ) {
       if (
         this.inventory.some(
           (x) =>
@@ -118,6 +130,16 @@ export class Person {
       return;
     }
 
+    // Sleep
+    if (
+      this.energy <= 20 ||
+      (this.current_action === actions.sleep && this.energy < 100)
+    ) {
+      this.intention = actions.sleep;
+      return;
+    }
+
+    // Forage for food for storage
     if (
       this.inventory.length <= 6 ||
       this.inventory.filter((x) =>
@@ -147,6 +169,8 @@ export class Person {
       this.intention = actions.fell_tree;
       return;
     }
+
+    // Build
     if (
       this.inventory.filter((x) =>
         x.descriptors.some((y) => y === object_descriptor.building_material)
@@ -157,6 +181,7 @@ export class Person {
       return;
     }
 
+    // Talk
     let a = get_nearby_people(this.position, 10, this.world);
     if (a.length > 0) {
       this.intention = actions.talk;
@@ -279,7 +304,7 @@ export class Person {
         distance: this.get_distance(own_position, obj.position),
       }))
       .filter((x) => x.distance > exclusion_distance)
-      .sort((x) => x.distance)[0];
+      .sort((x, y) => x.distance - y.distance)[0];
 
     return closest;
   }
@@ -402,13 +427,10 @@ export class Person {
         this.current_action = actions.idle;
 
         // Move to home, if exists
-        let homeMemory = this.memory.find(
-          (x) => x.description === "This is where my home is"
-        );
+        let homeMemory = this.get_closest_object(this.homes, this.position, 0);
+
         if (homeMemory) {
-          let pos = this.memory.find(
-            (x) => x.description === "This is where my home is"
-          )?.position;
+          let pos = homeMemory.object.position;
 
           if (pos && this.current_movement_goal !== pos)
             this.current_movement_goal = pos;
@@ -489,6 +511,35 @@ export class Person {
           }
         }
 
+      case actions.sleep:
+        if (
+          this.energy <= 0 ||
+          (this.current_action === actions.sleep && this.energy < 100)
+        ) {
+          this.current_action = actions.sleep;
+          this.energy += 2;
+          break;
+        }
+        // If owns house -> go there and sleep
+        if (this.homes.length > 0) {
+          // Get closest home
+          let home = this.get_closest_object(this.homes, this.position, 0);
+
+          if (home) {
+            // Set home as goal
+            this.current_movement_goal = home.object.position;
+            if (!this.check_if_goal_position_reached()) {
+              this.move_towards(this.current_movement_goal, this.skills.speed);
+            } else {
+              this.current_action = actions.sleep;
+              this.energy += 4;
+            }
+          }
+        } else {
+          this.current_action = actions.sleep;
+          this.energy += 2;
+        }
+
       case actions.walk:
         break;
 
@@ -560,12 +611,15 @@ export class Person {
             position: this.position,
             value: 100,
           } as WorldObject;
+
+          this.homes.push(newShack);
           this.world.objects.push(newShack);
           this.memory.push({
             age: 0,
             description: "This is where my home is",
             position: this.position,
             related_objects: [],
+            category: "house",
           } as Memory);
         } else {
           let a =

@@ -354,6 +354,8 @@ export class World {
             </td>
             <td>${Math.round(person.thirst)}
             </td>
+            <td>${Math.round(person.energy)}
+            </td>
             <td>${person.trade_timeout}
             </td>
             <td>${person.memory.length}

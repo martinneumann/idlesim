@@ -12,4 +12,5 @@ export enum object_descriptor {
   willow_tree = 11,
   walnut_tree = 12,
   wood_shack = 13,
+  home = 14,
 }
