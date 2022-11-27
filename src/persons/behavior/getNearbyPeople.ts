@@ -1,9 +1,9 @@
 import { Person } from "../person";
-import { position } from "../../geometry/position";
+import { Position } from "../../geometry/position";
 import { World } from "../../world/world";
 
 export function get_nearby_people(
-  position: position,
+  position: Position,
   radius: number,
   world: World
 ): Person[] {

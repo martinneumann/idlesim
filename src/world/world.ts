@@ -3,11 +3,12 @@ import { timer } from "rxjs";
 import { fruit_trees, natural_drinks } from "../assets/environment";
 import { Plant } from "../assets/plant";
 import { check_if_boundaries_are_reached } from "../geometry/functions/checkIfBoundariesAreReached";
-import { position } from "../geometry/position";
+import { Position } from "../geometry/position";
 import MyCircle from "../graphics";
 import { Tree, WorldObject } from "../objects/worldObjects";
 import { decideWithProbability } from "../persons/behavior/decideWithProbability";
 import { get_nearby_people } from "../persons/behavior/getNearbyPeople";
+import { Group, MeetingPoint } from "../persons/group";
 import { Person } from "../persons/person";
 import { actions } from "../util/actions";
 import { get_random_whole_number } from "../util/functions/getRandomWholeNumber";
@@ -61,6 +62,21 @@ export class World {
     this.generate_tree(object_descriptor.walnut_tree);
     this.generate_tree(object_descriptor.walnut_tree);
 
+    const name = createName();
+    const townGroup: Group = {
+      name: name,
+      members: [],
+      type: "settlement",
+      description: `The settlement of ${name}`,
+      meeting_points: [
+        {
+          position: { x: this.width / 2, y: this.height / 2, z: 0 },
+          type: "market",
+        } as MeetingPoint,
+      ],
+      associated_objects: [],
+    } as Group;
+
     for (let i = 0; i < get_random_whole_number(3, 15); i++) {
       this.people.push(
         new Person(
@@ -70,7 +86,8 @@ export class World {
             y: get_random_whole_number(0, this.height),
             z: 0,
           },
-          this
+          this,
+          townGroup
         )
       );
     }
@@ -96,7 +113,7 @@ export class World {
         this.people.push(
           new Person(
             createName(),
-            { x: p5.mouseX, y: p5.mouseY, z: 0 } as position,
+            { x: p5.mouseX, y: p5.mouseY, z: 0 } as Position,
             this
           )
         );
@@ -301,7 +318,7 @@ export class World {
     const html = document.getElementById("table-body") as HTMLElement;
 
     let a = 0;
-    const sim_timer = timer(1000, 200).subscribe(() => {
+    const sim_timer = timer(1000, 100).subscribe(() => {
       a += 1;
       if (html.innerHTML !== null) html.innerHTML = "";
 

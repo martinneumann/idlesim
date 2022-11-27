@@ -3,7 +3,7 @@ import {
   get_random_position_2d,
   get_random_position_2d_with_min_distance,
 } from "../geometry/functions/getRandomPosition";
-import { position } from "../geometry/position";
+import { Position } from "../geometry/position";
 import { Tree, WorldObject } from "../objects/worldObjects";
 import { actions } from "../util/actions";
 import { get_random_whole_number } from "../util/functions/getRandomWholeNumber";
@@ -13,7 +13,9 @@ import { get_random_element } from "../util/utils";
 import { World } from "../world/world";
 import { get_nearby_people } from "./behavior/getNearbyPeople";
 import { get_nearby_objects } from "./functions/getNearbyObjects";
+import { Group } from "./group";
 import { Memory } from "./memory";
+import { Need } from "./need";
 import { Relationship } from "./relationship";
 import { Skills } from "./skills";
 
@@ -22,14 +24,18 @@ export class Person {
   name: string = "Unnamed Person";
   skills: Skills = new Skills();
   age: number = 0;
-  position: position = { x: 1, y: 1, z: 1 };
+  position: Position = { x: 1, y: 1, z: 1 };
   hunger: number = 0;
   thirst: number = 0;
+  happiness: number = 80;
   energy: number = 100;
 
   money: number = 0;
 
   relationships: Relationship[] = [];
+
+  // Groups
+  groups: Group[] = [];
 
   // Objects carried on the person
   inventory: WorldObject[] = [];
@@ -38,20 +44,25 @@ export class Person {
   homes: WorldObject[] = [];
 
   memory: Memory[] = [];
-  object_needs: object_descriptor[] = [];
+
+  needs: Need[] = [];
+
+  // Possible contract offers
+  offers: Need[] = [];
 
   current_perceptions: WorldObject[] = [];
   current_people_in_range: Person[] = [];
   intention: actions = actions.idle;
-  current_movement_goal: position = { x: 1, y: 1, z: 1 };
+  current_movement_goal: Position = { x: 1, y: 1, z: 1 };
   current_action: actions = actions.idle;
   trade_timeout: number = 0;
   talk_timeout: number = 0;
 
-  constructor(name: string, position: position, world: World) {
+  constructor(name: string, position: Position, world: World, group?: Group) {
     this.name = name;
     this.position = position;
     this.world = world;
+    if (group) this.groups.push(group);
     console.log(`A person by the name of ${this.name} now exists.`);
   }
 
@@ -101,6 +112,32 @@ export class Person {
   }
 
   decide() {
+    // Set needs and offers
+    if (
+      this.get_objects_with_descriptors(this.inventory, [
+        object_descriptor.edible,
+      ]).length < 10 &&
+      !this.needs.find((x) => x.description === "hunger")
+    ) {
+      this.needs.push({
+        description: "hunger",
+        value: this.hunger,
+        object_descriptors: [object_descriptor.edible],
+      } as Need);
+    }
+
+    if (
+      this.get_objects_with_descriptors(this.inventory, [
+        object_descriptor.edible,
+      ]).length > 10
+    ) {
+      this.offers.push({
+        description: "hunger",
+        value: this.hunger,
+        object_descriptors: [object_descriptor.edible],
+      } as Need);
+    }
+
     // Eat or drink
     if (
       (this.thirst > 50 || this.hunger > 50) &&
@@ -178,6 +215,16 @@ export class Person {
       !this.memory.find((x) => x.description === "This is where my home is")
     ) {
       this.intention = actions.build;
+      return;
+    }
+
+    // Go to market square
+    let market = this.groups
+      .find((x) => x.type === "settlement")
+      ?.meeting_points.find((y) => y.type === "market");
+    if (market && this.get_distance(this.position, market.position) > 5) {
+      this.current_movement_goal = market.position;
+      this.move_towards(this.current_movement_goal, this.skills.speed);
       return;
     }
 
@@ -285,7 +332,7 @@ export class Person {
 
   get_status() {}
 
-  get_distance(pos1: position, pos2: position) {
+  get_distance(pos1: Position, pos2: Position) {
     return Math.sqrt(
       Math.pow(pos1.x - pos2.x, 2) +
         Math.pow(pos1.y - pos2.y, 2) +
@@ -295,7 +342,7 @@ export class Person {
 
   get_closest_object(
     objects: WorldObject[],
-    own_position: position,
+    own_position: Position,
     exclusion_distance: number
   ) {
     let closest = objects
@@ -364,18 +411,25 @@ export class Person {
     };
   }
 
-  set_current_goal_position(position: position) {
+  set_current_goal_position(position: Position) {
     this.current_movement_goal = position;
   }
 
-  check_if_goal_position_reached(): boolean {
+  check_if_goal_position_reached(tolerance?: number): boolean {
+    if (tolerance) {
+      if (
+        this.get_distance(this.current_movement_goal, this.position) < tolerance
+      ) {
+        return true;
+      } else return false;
+    }
     if (this.position === this.current_movement_goal) {
       return true;
     }
     return false;
   }
 
-  move_towards(target: position, speed: number) {
+  move_towards(target: Position, speed: number) {
     let distance = Math.sqrt(
       Math.pow(target.x - this.position.x, 2) +
         Math.pow(target.y - this.position.y, 2) +
@@ -596,41 +650,88 @@ export class Person {
       case actions.pick_up:
         break;
       case actions.build:
+        // Has material?
         if (
           this.inventory.filter((x) =>
             x.descriptors.some((y) => y === object_descriptor.building_material)
           ).length > 3
         ) {
-          // @todo: remove wood form inventory
+          this.current_action = actions.build;
+          // Move to building space
+          // If is member of town, move to town market
+          let settlement = this.groups.find((x) => x.type === "settlement");
+          console.log(settlement);
+          if (settlement) {
+            if (
+              this.get_distance(
+                this.current_movement_goal,
+                settlement.meeting_points.find((x) => x.type === "market")!
+                  .position
+              ) < 30
+            ) {
+              if (this.check_if_goal_position_reached(80)) {
+                let newShack = {
+                  belongsTo: this.name,
+                  descriptors: [object_descriptor.wood_shack],
+                  markedForTrade: false,
+                  name: this.name + "s wooden shack",
+                  position: this.position,
+                  value: 100,
+                } as WorldObject;
+                this.homes.push(newShack);
+                this.world.objects.push(newShack);
+                this.memory.push({
+                  age: 0,
+                  description: "This is where my home is",
+                  position: this.position,
+                  related_objects: [],
+                  category: "house",
+                } as Memory);
+                settlement.associated_objects.push(newShack);
+                this.intention = actions.idle;
+                break;
+              } else {
+                this.move_towards(
+                  this.current_movement_goal,
+                  this.skills.speed
+                );
+                break;
+              }
+            } else {
+              this.current_movement_goal = settlement.meeting_points.find(
+                (x) => x.type === "market"
+              )!.position;
 
-          let newShack = {
-            belongsTo: this.name,
-            descriptors: [object_descriptor.wood_shack],
-            markedForTrade: false,
-            name: this.name + "s wooden shack",
-            position: this.position,
-            value: 100,
-          } as WorldObject;
+              this.move_towards(this.current_movement_goal, this.skills.speed);
+              break;
+            }
+          } else {
+            // @todo: remove wood form inventory
 
-          this.homes.push(newShack);
-          this.world.objects.push(newShack);
-          this.memory.push({
-            age: 0,
-            description: "This is where my home is",
-            position: this.position,
-            related_objects: [],
-            category: "house",
-          } as Memory);
-        } else {
-          let a =
-            this.inventory.filter((x) =>
-              x.descriptors.some(
-                (y) => y === object_descriptor.building_material
-              )
-            ).length > 3;
+            let newShack = {
+              belongsTo: this.name,
+              descriptors: [object_descriptor.wood_shack],
+              markedForTrade: false,
+              name: this.name + "s wooden shack",
+              position: this.position,
+              value: 100,
+            } as WorldObject;
+
+            this.homes.push(newShack);
+            this.world.objects.push(newShack);
+            this.memory.push({
+              age: 0,
+              description: "This is where my home is",
+              position: this.position,
+              related_objects: [],
+              category: "house",
+            } as Memory);
+            this.intention = actions.idle;
+            break;
+          }
         }
 
-        this.intention = actions.idle;
+        this.intention = actions.fell_tree;
         break;
       case actions.bear_child:
         break;
@@ -666,7 +767,6 @@ export class Person {
             break;
           }
         }
-        break;
       case actions.forage:
         this.current_action = actions.forage;
         let desired_descriptors = [];

@@ -1,6 +1,6 @@
 import { get_random_whole_number } from "../../util/functions/getRandomWholeNumber";
 import { World } from "../../world/world";
-import { position } from "../position";
+import { Position } from "../position";
 
 export function get_random_position_2d(world: World) {
   return {
@@ -12,7 +12,7 @@ export function get_random_position_2d(world: World) {
 
 export function get_random_position_2d_with_min_distance(
   world: World,
-  position: position
+  position: Position
 ) {
   if (Math.random() > 0.75)
     return {
