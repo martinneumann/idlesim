@@ -108,7 +108,6 @@ export class World {
 
     p5.mouseClicked = () => {
       let a = (<HTMLInputElement>document.getElementById("godmode"))?.checked;
-      console.log(a);
       if (a)
         this.people.push(
           new Person(

@@ -311,7 +311,7 @@ export class Person {
       )
       .forEach((perception) => {
         let mem = this.memory.find((memory) =>
-          memory.related_objects.find((object) => object === perception)
+          memory.related_objects?.find((object) => object === perception)
         );
         if (mem === undefined) {
           this.memory.push({
@@ -350,10 +350,10 @@ export class Person {
         object: obj,
         distance: this.get_distance(own_position, obj.position),
       }))
-      .filter((x) => x.distance > exclusion_distance)
-      .sort((x, y) => x.distance - y.distance)[0];
+      .filter((x) => x.distance >= exclusion_distance)
+      .sort((x, y) => x.distance - y.distance);
 
-    return closest;
+    return closest[0];
   }
 
   get_objects_with_descriptors(
@@ -467,11 +467,17 @@ export class Person {
   check_for_free_nearby_object(
     descriptors: object_descriptor[]
   ): WorldObject | undefined {
-    return this.current_perceptions.filter(
-      (x) =>
-        x.descriptors.some((y) => descriptors.some((desc) => desc === y)) &&
-        x.belongsTo == ""
-    )[0];
+    const obj = this.get_closest_object(
+      this.current_perceptions.filter(
+        (x) =>
+          x.descriptors.some((y) => descriptors.some((desc) => desc === y)) &&
+          x.belongsTo == ""
+      ),
+      this.position,
+      0
+    )?.object;
+
+    return obj;
   }
 
   do_action(): boolean {
@@ -660,7 +666,6 @@ export class Person {
           // Move to building space
           // If is member of town, move to town market
           let settlement = this.groups.find((x) => x.type === "settlement");
-          console.log(settlement);
           if (settlement) {
             if (
               this.get_distance(
