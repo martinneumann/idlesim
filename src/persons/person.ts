@@ -869,7 +869,7 @@ export class Person {
               partner.memory.push(topic);
             }
           }
-          this.talk_timeout = 200;
+          this.talk_timeout = 50;
           this.world.append_to_log(
             this.name,
             `To ${partner.name}: ${message}.`
