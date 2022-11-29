@@ -14,6 +14,7 @@ import { World } from "../world/world";
 import { get_nearby_people } from "./behavior/getNearbyPeople";
 import { get_nearby_objects } from "./functions/getNearbyObjects";
 import { Group } from "./group";
+import { Job } from "./job";
 import { Memory } from "./memory";
 import { Need } from "./need";
 import { Relationship } from "./relationship";
@@ -46,6 +47,8 @@ export class Person {
   memory: Memory[] = [];
 
   needs: Need[] = [];
+
+  job: Job = {} as Job;
 
   // Possible contract offers
   offers: Need[] = [];
@@ -83,7 +86,7 @@ export class Person {
     }
   }
 
-  print_intention() {}
+  assign_job() {}
 
   organize() {
     // Set superfluous items to markedForTrade if not hungry or thirsty

@@ -249,8 +249,8 @@ export class World {
       | object_descriptor.willow_tree
   ) {
     let source = {
-      x: get_random_whole_number(150, this.width),
-      y: get_random_whole_number(150, this.height),
+      x: get_random_whole_number(150, this.width - 150),
+      y: get_random_whole_number(150, this.height - 150),
     };
 
     let descriptors = [type];
