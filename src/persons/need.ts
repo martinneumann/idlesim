@@ -9,14 +9,15 @@ import { object_descriptor } from "../util/objectDescriptor";
  */
 export class Need {
   description:
-    | "hunger"
-    | "thirst"
+    | "food"
+    | "drink"
     | "energy"
     | "safety"
-    | "happiness"
+    | "entertainment"
     | "unspecified" = "unspecified";
 
   // Value is either necessity or preference of provision by offering party
   value = 0;
   object_descriptors: object_descriptor[] = [];
+  recurring = true;
 }

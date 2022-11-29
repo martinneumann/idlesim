@@ -20,6 +20,12 @@ import { Need } from "./need";
 import { Relationship } from "./relationship";
 import { Skills } from "./skills";
 
+const need_food_map = [
+  { ["food"]: "orchadist" },
+  { ["drink"]: "water carrier" },
+  { ["entertainment"]: "bard" },
+];
+
 export class Person {
   world: World;
   name: string = "Unnamed Person";
@@ -65,6 +71,24 @@ export class Person {
     this.name = name;
     this.position = position;
     this.world = world;
+    this.needs.push({
+      description: "food",
+      recurring: true,
+      object_descriptors: [object_descriptor.edible],
+    } as Need);
+    this.needs.push({
+      description: "drink",
+      recurring: true,
+      object_descriptors: [object_descriptor.drinkable],
+    } as Need);
+    this.needs.push({
+      description: "entertainment",
+      recurring: true,
+    } as Need);
+    this.needs.push({
+      description: "safety",
+      recurring: true,
+    } as Need);
     if (group) this.groups.push(group);
     console.log(`A person by the name of ${this.name} now exists.`);
   }
@@ -115,32 +139,6 @@ export class Person {
   }
 
   decide() {
-    // Set needs and offers
-    if (
-      this.get_objects_with_descriptors(this.inventory, [
-        object_descriptor.edible,
-      ]).length < 10 &&
-      !this.needs.find((x) => x.description === "hunger")
-    ) {
-      this.needs.push({
-        description: "hunger",
-        value: this.hunger,
-        object_descriptors: [object_descriptor.edible],
-      } as Need);
-    }
-
-    if (
-      this.get_objects_with_descriptors(this.inventory, [
-        object_descriptor.edible,
-      ]).length > 10
-    ) {
-      this.offers.push({
-        description: "hunger",
-        value: this.hunger,
-        object_descriptors: [object_descriptor.edible],
-      } as Need);
-    }
-
     // Eat or drink
     if (
       (this.thirst > 50 || this.hunger > 50) &&
@@ -178,6 +176,16 @@ export class Person {
       this.intention = actions.sleep;
       return;
     }
+
+    // Evaluate job
+    let mems = this.memory.filter((x) => x.category === "need");
+    if (!this.job?.title && mems.length > 0) {
+      this.intention = actions.talk;
+      return;
+    }
+    // Set needs and offers
+
+    // offers
 
     // Forage for food for storage
     if (
@@ -694,6 +702,7 @@ export class Person {
                   position: this.position,
                   related_objects: [],
                   category: "house",
+                  related_persons: [this],
                 } as Memory);
                 settlement.associated_objects.push(newShack);
                 this.intention = actions.idle;
@@ -733,6 +742,7 @@ export class Person {
               position: this.position,
               related_objects: [],
               category: "house",
+              related_persons: [this],
             } as Memory);
             this.intention = actions.idle;
             break;
@@ -835,20 +845,46 @@ export class Person {
         }
       case actions.talk:
         this.current_action = actions.talk;
-        if (this.talk_timeout > 0) break;
+
+        if (this.talk_timeout > 0) break; // boring
+
         let partners = get_nearby_people(this.position, 5, this.world);
         if (partners.length > 0) {
-          let partner = partners[0];
-          let topic = get_random_element(this.memory) as Memory;
+          const partner: Person = get_random_element(partners);
+
+          // Decide topic
+          let topic: Memory;
+          let mems = this.memory.filter((x) => x.category === "need");
+          if (mems.length > 0 && this.job?.title === undefined) {
+            let randomNeedToFulfill: Memory = get_random_element(mems);
+            topic = {
+              age: 0,
+              category: "job_proposition",
+              description: randomNeedToFulfill.description,
+            } as Memory;
+          } else if (Math.random() > 0.4)
+            topic = get_random_element(this.memory) as Memory;
+          else {
+            let foundNeed: Need = get_random_element(this.needs);
+            topic = {
+              age: 0,
+              category: "need",
+              related_persons: [this],
+              description: foundNeed.description,
+              position: {} as Position,
+              related_objects: [],
+            } as Memory;
+          }
+
           let message;
-          if (topic.description.includes("home")) {
+          if (topic.category === "house") {
             message = `${Math.floor(
               this.get_distance(this.position, topic.position)
             )} steps from here. ${topic.description}`;
 
             if (
               !partner.memory.find(
-                (x) => x.related_objects === topic.related_objects
+                (x: any) => x.related_objects === topic.related_objects
               )
             ) {
               partner.memory.push({
@@ -856,6 +892,50 @@ export class Person {
                 description: "House of " + this.name,
                 position: topic.position,
               } as Memory);
+            }
+          } else if (topic.category === "need") {
+            message = `Someone should really provide some ${topic.description}...`;
+
+            let foundMemory = partner.memory.find(
+              (x) => x.description === topic.description
+            );
+            if (!foundMemory) {
+              partner.memory.push({
+                age: 0,
+                description: topic.description,
+                position: {} as Position,
+                category: "need",
+                related_persons: [this],
+                related_objects: [],
+              } as Memory);
+            } else {
+              foundMemory.related_persons.push(this);
+              foundMemory.age = 0;
+            }
+          } else if (topic.category === "job_proposition") {
+            let title = "peasant";
+            switch (topic.description) {
+              case "food":
+                title = "orchardist";
+                break;
+              case "drink":
+                title = "water carrier";
+                break;
+              case "entertainment":
+                title = "bard";
+                break;
+            }
+            this.job = {
+              fulfilled_needs: [{ description: topic.description } as Need],
+              title: title,
+            } as Job;
+            message = `I became a ${title}`;
+            if (
+              !partner.memory.find(
+                (x: Memory) => x.description === topic.description
+              )
+            ) {
+              partner.memory.push(topic);
             }
           } else {
             message = `I know there is a ${
@@ -866,13 +946,13 @@ export class Person {
 
             if (
               !partner.memory.find(
-                (x) => x.related_objects === topic.related_objects
+                (x: any) => x.related_objects === topic.related_objects
               )
             ) {
               partner.memory.push(topic);
             }
           }
-          this.talk_timeout = 50;
+          this.talk_timeout = 30;
           this.world.append_to_log(
             this.name,
             `To ${partner.name}: ${message}.`
