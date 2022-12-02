@@ -1,4 +1,6 @@
-import { helpers } from "rx";
+import { helpers, Observable } from "rx";
+import { Subscription, tap } from "rxjs";
+import { check_if_boundaries_are_reached } from "../geometry/functions/checkIfBoundariesAreReached";
 import {
   get_random_position_2d,
   get_random_position_2d_with_min_distance,
@@ -38,6 +40,12 @@ export class Person {
   energy: number = 100;
 
   money: number = 0;
+
+  // Observables
+  /**
+   * Each emitted value triggers a new step in the simulation.
+   */
+  timeTrigger$: any;
 
   relationships: Relationship[] = [];
 
@@ -90,6 +98,28 @@ export class Person {
       recurring: true,
     } as Need);
     if (group) this.groups.push(group);
+
+    /**
+     * Timing behavior
+     */
+    this.timeTrigger$ = this.world.worldClock.pipe(
+      tap((time) => {
+        check_if_boundaries_are_reached(this.position, this.world);
+
+        this.perceive(this.skills.perception);
+        this.organize();
+        this.decide();
+        if (!this.do_action()) {
+          console.log(`${this.name} has been found dead.`);
+          this.world.people.splice(
+            this.world.people.findIndex((x) => x.name === this.name),
+            1
+          );
+        }
+      })
+    );
+
+    this.timeTrigger$.subscribe();
     console.log(`A person by the name of ${this.name} now exists.`);
   }
 
@@ -910,7 +940,7 @@ export class Person {
                 related_objects: [],
               } as Memory);
             } else {
-              foundMemory.related_persons.push(this);
+              foundMemory?.related_persons?.push(this);
               foundMemory.age = 0;
             }
           } else if (topic.category === "job_proposition") {

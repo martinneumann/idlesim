@@ -1,8 +1,7 @@
 import p5 from "p5";
 import { timer } from "rxjs";
-import { fruit_trees, natural_drinks } from "../assets/environment";
+import { natural_drinks } from "../assets/environment";
 import { Plant } from "../assets/plant";
-import { check_if_boundaries_are_reached } from "../geometry/functions/checkIfBoundariesAreReached";
 import { Position } from "../geometry/position";
 import MyCircle from "../graphics";
 import { Tree, WorldObject } from "../objects/worldObjects";
@@ -31,6 +30,8 @@ export class World {
   plants: Plant[] = [];
   p5: p5;
   cam: p5.Camera | undefined;
+
+  public worldClock = timer(100, 100);
 
   constructor() {
     this.name = createName();
@@ -324,22 +325,6 @@ export class World {
       /**
        * People actions
        **/
-      this.people.forEach((person) => {
-        check_if_boundaries_are_reached(person.position, this);
-        if (person.check_if_goal_position_reached()) {
-          person.set_random_current_goal_position(true);
-        }
-        person.perceive(person.skills.perception);
-        person.organize();
-        person.decide();
-        if (!person.do_action()) {
-          console.log(`${person.name} has been found dead.`);
-          this.people.splice(
-            this.people.findIndex((x) => x == person),
-            1
-          );
-        }
-      });
 
       /**
        * Stat update
