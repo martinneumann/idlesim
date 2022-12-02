@@ -341,8 +341,9 @@ export class Person {
 
   update_memories(current_perceptions: WorldObject[]) {
     // Forget old memories
-    this.memory.forEach((memory) => {});
-    this.memory = this.memory.filter((x) => x.age < 3000);
+    this.memory = this.memory.filter(
+      (x) => x.age < 3000 && x.category !== "house"
+    );
 
     // Add current perceptions
     current_perceptions
