@@ -1,5 +1,5 @@
 import p5 from "p5";
-import { timer } from "rxjs";
+import { Subject, timer } from "rxjs";
 import { natural_drinks } from "../assets/environment";
 import { Plant } from "../assets/plant";
 import { Position } from "../geometry/position";
@@ -12,9 +12,10 @@ import { Person } from "../persons/person";
 import { actions } from "../util/actions";
 import { get_random_whole_number } from "../util/functions/getRandomWholeNumber";
 import { createName } from "../util/nameCreators";
-import { object_descriptor } from "../util/objectDescriptor";
+import { ObjectDescriptor } from "../util/objectDescriptor";
 import { text } from "../util/text";
 import { get_color_by_object_type, get_random_element } from "../util/utils";
+import { Sound } from "./sound";
 
 const WIDTH = window.innerWidth;
 const HEIGHT = window.innerHeight;
@@ -33,6 +34,8 @@ export class World {
 
   public worldClock = timer(100, 100);
 
+  public sound = new Subject<Sound>();
+
   constructor() {
     this.name = createName();
 
@@ -44,24 +47,24 @@ export class World {
     this.generate_river();
     this.generate_river();
     this.generate_river();
-    this.generate_tree(object_descriptor.fruit_tree);
-    this.generate_tree(object_descriptor.fruit_tree);
-    this.generate_tree(object_descriptor.fruit_tree);
-    this.generate_tree(object_descriptor.fruit_tree);
-    this.generate_tree(object_descriptor.fruit_tree);
-    this.generate_tree(object_descriptor.willow_tree);
-    this.generate_tree(object_descriptor.willow_tree);
-    this.generate_tree(object_descriptor.willow_tree);
-    this.generate_tree(object_descriptor.willow_tree);
-    this.generate_tree(object_descriptor.walnut_tree);
-    this.generate_tree(object_descriptor.walnut_tree);
-    this.generate_tree(object_descriptor.walnut_tree);
-    this.generate_tree(object_descriptor.walnut_tree);
-    this.generate_tree(object_descriptor.walnut_tree);
-    this.generate_tree(object_descriptor.walnut_tree);
-    this.generate_tree(object_descriptor.walnut_tree);
-    this.generate_tree(object_descriptor.walnut_tree);
-    this.generate_tree(object_descriptor.walnut_tree);
+    this.generate_tree(ObjectDescriptor.fruit_tree);
+    this.generate_tree(ObjectDescriptor.fruit_tree);
+    this.generate_tree(ObjectDescriptor.fruit_tree);
+    this.generate_tree(ObjectDescriptor.fruit_tree);
+    this.generate_tree(ObjectDescriptor.fruit_tree);
+    this.generate_tree(ObjectDescriptor.willow_tree);
+    this.generate_tree(ObjectDescriptor.willow_tree);
+    this.generate_tree(ObjectDescriptor.willow_tree);
+    this.generate_tree(ObjectDescriptor.willow_tree);
+    this.generate_tree(ObjectDescriptor.walnut_tree);
+    this.generate_tree(ObjectDescriptor.walnut_tree);
+    this.generate_tree(ObjectDescriptor.walnut_tree);
+    this.generate_tree(ObjectDescriptor.walnut_tree);
+    this.generate_tree(ObjectDescriptor.walnut_tree);
+    this.generate_tree(ObjectDescriptor.walnut_tree);
+    this.generate_tree(ObjectDescriptor.walnut_tree);
+    this.generate_tree(ObjectDescriptor.walnut_tree);
+    this.generate_tree(ObjectDescriptor.walnut_tree);
 
     const name = createName();
     const townGroup: Group = {
@@ -76,6 +79,7 @@ export class World {
         } as MeetingPoint,
       ],
       associated_objects: [],
+      needs: [],
     } as Group;
 
     for (let i = 0; i < get_random_whole_number(3, 15); i++) {
@@ -192,10 +196,10 @@ export class World {
     const object_circles: MyCircle[] = [];
     this.objects.forEach((object) => {
       let size = 1;
-      if (object.descriptors.some((x) => x === object_descriptor.wood_shack)) {
+      if (object.descriptors.some((x) => x === ObjectDescriptor.wood_shack)) {
         size = 10;
       }
-      if (object.descriptors.some((x) => x === object_descriptor.fruit_tree)) {
+      if (object.descriptors.some((x) => x === ObjectDescriptor.fruit_tree)) {
         size = 2;
       }
       object_circles.push(
@@ -210,10 +214,10 @@ export class World {
           get_color_by_object_type(object.descriptors[0]),
           object.descriptors.some(
             (x) =>
-              x === object_descriptor.fruit_tree ||
-              x === object_descriptor.walnut_tree ||
-              x === object_descriptor.willow_tree ||
-              x === object_descriptor.wood_shack
+              x === ObjectDescriptor.fruit_tree ||
+              x === ObjectDescriptor.walnut_tree ||
+              x === ObjectDescriptor.willow_tree ||
+              x === ObjectDescriptor.wood_shack
           )
             ? object.name
             : ""
@@ -245,9 +249,9 @@ export class World {
 
   generate_tree(
     type:
-      | object_descriptor.fruit_tree
-      | object_descriptor.walnut_tree
-      | object_descriptor.willow_tree
+      | ObjectDescriptor.fruit_tree
+      | ObjectDescriptor.walnut_tree
+      | ObjectDescriptor.willow_tree
   ) {
     let source = {
       x: get_random_whole_number(150, this.width - 150),
@@ -255,17 +259,17 @@ export class World {
     };
 
     let descriptors = [type];
-    if (type === object_descriptor.fruit_tree) {
+    if (type === ObjectDescriptor.fruit_tree) {
       let fruit_type = get_random_element([
-        object_descriptor.apple,
-        object_descriptor.pear,
+        ObjectDescriptor.apple,
+        ObjectDescriptor.pear,
       ]);
       descriptors.push(fruit_type);
     }
 
     this.objects.push(
       new Tree(
-        object_descriptor[type],
+        ObjectDescriptor[type],
         descriptors,
         {
           x: source.x,
@@ -290,7 +294,7 @@ export class World {
       this.objects.push(
         new WorldObject(
           "river water",
-          [object_descriptor.drinkable, object_descriptor.regenerative],
+          [ObjectDescriptor.drinkable, ObjectDescriptor.regenerative],
           {
             x: source.x,
             y: source.y,
@@ -359,7 +363,7 @@ export class World {
             </td>
             <td>${person.trade_timeout}
             </td>
-            <td>${person.memory.length}
+            <td>${person.hippocampus.length}
             </td>
             <tr>`;
         });
@@ -374,7 +378,7 @@ export class World {
         .filter(
           (x) =>
             x instanceof Tree &&
-            x.descriptors.some((y) => y === object_descriptor.fruit_tree)
+            x.descriptors.some((y) => y === ObjectDescriptor.fruit_tree)
         )
         .forEach((tree: any) => {
           if (tree.timeToHarvest >= 0) {
@@ -384,8 +388,8 @@ export class World {
             for (let a = 0; a < fruit_quantity; a++) {
               this.objects.push(
                 new WorldObject(
-                  object_descriptor[tree.descriptors[1].valueOf()],
-                  [object_descriptor.edible],
+                  ObjectDescriptor[tree.descriptors[1].valueOf()],
+                  [ObjectDescriptor.edible],
                   {
                     x: get_random_whole_number(
                       tree.position.x - 15,
@@ -413,7 +417,7 @@ export class World {
                 natural_drinks[
                   get_random_whole_number(0, natural_drinks.length)
                 ],
-                [object_descriptor.drinkable],
+                [ObjectDescriptor.drinkable],
                 {
                   x: get_random_whole_number(150, this.width),
                   y: get_random_whole_number(150, this.height),
@@ -428,13 +432,13 @@ export class World {
           if (decideWithProbability(50)) {
             this.objects.push(
               new WorldObject(
-                object_descriptor[
+                ObjectDescriptor[
                   get_random_element([
-                    object_descriptor.apple,
-                    object_descriptor.pear,
+                    ObjectDescriptor.apple,
+                    ObjectDescriptor.pear,
                   ])
                 ],
-                [object_descriptor.edible],
+                [ObjectDescriptor.edible],
                 {
                   x: get_random_whole_number(150, this.width),
                   y: get_random_whole_number(150, this.height),

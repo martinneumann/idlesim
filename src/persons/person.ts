@@ -1,5 +1,5 @@
 import { helpers, Observable } from "rx";
-import { Subscription, tap } from "rxjs";
+import { filter, map, Subscription, tap } from "rxjs";
 import { check_if_boundaries_are_reached } from "../geometry/functions/checkIfBoundariesAreReached";
 import {
   get_random_position_2d,
@@ -10,14 +10,18 @@ import { Tree, WorldObject } from "../objects/worldObjects";
 import { actions } from "../util/actions";
 import { get_random_whole_number } from "../util/functions/getRandomWholeNumber";
 import { is_in_reach } from "../util/functions/isInReach";
-import { object_descriptor } from "../util/objectDescriptor";
+import { ObjectDescriptor } from "../util/objectDescriptor";
 import { get_random_element } from "../util/utils";
+import { Sound } from "../world/sound";
 import { World } from "../world/world";
 import { get_nearby_people } from "./behavior/getNearbyPeople";
+import { startingNeeds } from "./functions/birth";
 import { get_nearby_objects } from "./functions/getNearbyObjects";
+import { listen } from "./functions/listen";
 import { Group } from "./group";
+import { Inventory } from "./inventory/inventory";
 import { Job } from "./job";
-import { Memory } from "./memory";
+import { HippoCampus, Memory } from "./memory";
 import { Need } from "./need";
 import { Relationship } from "./relationship";
 import { Skills } from "./skills";
@@ -47,18 +51,20 @@ export class Person {
    */
   timeTrigger$: any;
 
+  ears$: any;
+
   relationships: Relationship[] = [];
 
   // Groups
   groups: Group[] = [];
 
   // Objects carried on the person
-  inventory: WorldObject[] = [];
+  inventory: Inventory = new Inventory();
 
   // Objects are considered home
   homes: WorldObject[] = [];
 
-  memory: Memory[] = [];
+  hippocampus: HippoCampus = new HippoCampus();
 
   needs: Need[] = [];
 
@@ -79,31 +85,15 @@ export class Person {
     this.name = name;
     this.position = position;
     this.world = world;
-    this.needs.push({
-      description: "food",
-      recurring: true,
-      object_descriptors: [object_descriptor.edible],
-    } as Need);
-    this.needs.push({
-      description: "drink",
-      recurring: true,
-      object_descriptors: [object_descriptor.drinkable],
-    } as Need);
-    this.needs.push({
-      description: "entertainment",
-      recurring: true,
-    } as Need);
-    this.needs.push({
-      description: "safety",
-      recurring: true,
-    } as Need);
     if (group) this.groups.push(group);
+
+    this.needs.push(...startingNeeds["standard_needs"]);
 
     /**
      * Timing behavior
      */
     this.timeTrigger$ = this.world.worldClock.pipe(
-      tap((time) => {
+      tap(() => {
         check_if_boundaries_are_reached(this.position, this.world);
 
         this.perceive(this.skills.perception);
@@ -111,12 +101,26 @@ export class Person {
         this.decide();
         if (!this.do_action()) {
           console.log(`${this.name} has been found dead.`);
+          this.timeTrigger$.unsubscribe();
           this.world.people.splice(
             this.world.people.findIndex((x) => x.name === this.name),
             1
           );
         }
       })
+    );
+
+    /**
+     * Listen to sound in reach
+     * @todo finish sound -> memory etc.
+     */
+    this.ears$ = this.world.sound.pipe(
+      filter(
+        (sound) =>
+          this.get_distance(this.position, sound.area_center) <=
+          sound.area_radius
+      ),
+      map((sound) => this.hippocampus.addMemory(listen(sound)))
     );
 
     this.timeTrigger$.subscribe();
@@ -144,28 +148,8 @@ export class Person {
 
   organize() {
     // Set superfluous items to markedForTrade if not hungry or thirsty
-    for (let item of this.inventory) {
-      if (
-        this.inventory.filter(
-          (x) =>
-            x.descriptors.includes(object_descriptor.edible) &&
-            x.markedForTrade === false
-        ).length > 3 &&
-        this.hunger <= 60
-      ) {
-        item.markedForTrade = true;
-      }
-      if (
-        this.inventory.filter(
-          (x) =>
-            x.descriptors.includes(object_descriptor.drinkable) &&
-            x.markedForTrade === false
-        ).length > 3 &&
-        this.thirst <= 60
-      ) {
-        item.markedForTrade = true;
-      }
-    }
+    if (this.intention === actions.trade)
+      this.inventory.markSuperfluousObjectsForTrade();
   }
 
   decide() {
@@ -175,22 +159,20 @@ export class Person {
       this.current_action !== actions.sleep
     ) {
       if (
-        this.inventory.some(
-          (x) =>
-            x.descriptors.some((y) => y === object_descriptor.drinkable) &&
-            this.thirst > 50
-        )
+        this.inventory.findFirstObjectByObjectDescriptor(
+          ObjectDescriptor.drinkable
+        ) &&
+        this.thirst > 50
       ) {
         this.intention = actions.drink;
         return;
       }
 
       if (
-        this.inventory.some(
-          (x) =>
-            x.descriptors.some((y) => y === object_descriptor.edible) &&
-            this.hunger > 50
-        )
+        this.inventory.findFirstObjectByObjectDescriptor(
+          ObjectDescriptor.edible
+        ) &&
+        this.hunger > 50
       ) {
         this.intention = actions.eat;
         return;
@@ -208,11 +190,13 @@ export class Person {
     }
 
     // Evaluate job
-    let mems = this.memory.filter((x) => x.category === "need");
+    /* @todo: add jobs
+    let mems = this.hippocampus.filter((x) => x.category === "need");
     if (!this.job?.title && mems.length > 0) {
       this.intention = actions.talk;
       return;
     }
+    */
     // Set needs and offers
 
     // offers
@@ -220,18 +204,18 @@ export class Person {
     // Forage for food for storage
     if (
       this.inventory.length <= 6 ||
-      this.inventory.filter((x) =>
-        x.descriptors.some((y) => y === object_descriptor.edible)
-      ).length <= 6 ||
-      this.inventory.filter((x) =>
-        x.descriptors.some((y) => y === object_descriptor.drinkable)
-      ).length <= 6
+      this.inventory.getNumberOfItemsByObjectDescriptor(
+        ObjectDescriptor.edible
+      ) <= 6 ||
+      this.inventory.getNumberOfItemsByObjectDescriptor(
+        ObjectDescriptor.drinkable
+      ) <= 6
     ) {
       this.intention = actions.forage;
       return;
     }
     if (
-      this.inventory.find((x) => x.markedForTrade) &&
+      this.inventory.checkIfAnyItemMarkedForTrade() &&
       this.trade_timeout === 0
     ) {
       this.intention = actions.trade;
@@ -240,9 +224,9 @@ export class Person {
 
     // Fell tree
     if (
-      this.inventory.filter((x) =>
-        x.descriptors.some((y) => y === object_descriptor.building_material)
-      ).length <= 3
+      this.inventory.getNumberOfItemsByObjectDescriptor(
+        ObjectDescriptor.building_material
+      ) <= 3
     ) {
       this.intention = actions.fell_tree;
       return;
@@ -250,10 +234,10 @@ export class Person {
 
     // Build
     if (
-      this.inventory.filter((x) =>
-        x.descriptors.some((y) => y === object_descriptor.building_material)
-      ).length > 3 &&
-      !this.memory.find((x) => x.description === "This is where my home is")
+      this.inventory.getNumberOfItemsByObjectDescriptor(
+        ObjectDescriptor.building_material
+      ) > 3 &&
+      !this.hippocampus.getMemoriesByObjectDescriptor([ObjectDescriptor.home])
     ) {
       this.intention = actions.build;
       return;
@@ -284,8 +268,8 @@ export class Person {
     if (object.belongsTo != "") {
     } else {
       object.belongsTo = this.name;
-      this.inventory.push(object);
-      if (!object.descriptors.includes(object_descriptor.regenerative)) {
+      this.inventory.addItem(object);
+      if (!object.descriptors.includes(ObjectDescriptor.regenerative)) {
         world.objects.splice(world.objects.indexOf(object), 1);
       }
       this.skills.perception += 1;
@@ -299,7 +283,7 @@ export class Person {
         this.world.objects.push(
           new WorldObject(
             "wood",
-            [object_descriptor.building_material],
+            [ObjectDescriptor.building_material],
             {
               x: tree.position.x + i * 2,
               y: tree.position.y + i,
@@ -309,9 +293,9 @@ export class Person {
           )
         );
       }
-      this.inventory.push({
+      this.inventory.addItem({
         belongsTo: this.name,
-        descriptors: [object_descriptor.building_material],
+        descriptors: [ObjectDescriptor.building_material],
         markedForTrade: false,
         name: "wood",
         position: this.position,
@@ -341,7 +325,7 @@ export class Person {
 
   update_memories(current_perceptions: WorldObject[]) {
     // Forget old memories
-    this.memory = this.memory.filter(
+    this.hippocampus = this.hippocampus.filter(
       (x) => x.age < 3000 || x.category === "house"
     );
 
@@ -349,15 +333,15 @@ export class Person {
     current_perceptions
       .filter((perception) =>
         perception.descriptors.some(
-          (perc) => perc === object_descriptor.fruit_tree
+          (perc) => perc === ObjectDescriptor.fruit_tree
         )
       )
       .forEach((perception) => {
-        let mem = this.memory.find((memory) =>
+        let mem = this.hippocampus.find((memory) =>
           memory.related_objects?.find((object) => object === perception)
         );
         if (mem === undefined) {
-          this.memory.push({
+          this.hippocampus.push({
             description: perception.name,
             position: perception.position,
             related_objects: [perception],
@@ -368,7 +352,7 @@ export class Person {
         }
       });
 
-    this.memory.forEach((memory) => {
+    this.hippocampus.forEach((memory) => {
       memory.age += 1;
     });
   }
@@ -401,7 +385,7 @@ export class Person {
 
   get_objects_with_descriptors(
     objects: WorldObject[],
-    descriptors: object_descriptor[]
+    descriptors: ObjectDescriptor[]
   ) {
     let test = objects.filter((object) =>
       object.descriptors.some((descriptor) => descriptors.includes(descriptor))
@@ -414,13 +398,13 @@ export class Person {
    * @param descriptor what to look for. gets the first one in the memory.
    */
   find_nearest_memory_fit(
-    descriptors: object_descriptor[],
+    descriptors: ObjectDescriptor[],
     maxAge = 1000,
     minAge = 100
   ) {
     const returnval = this.get_closest_object(
       this.get_objects_with_descriptors(
-        this.memory
+        this.hippocampus
           .filter((x) => x.age < maxAge)
           .filter((x) => x.age > minAge)
           .map((x) => x.related_objects)
@@ -508,7 +492,7 @@ export class Person {
   }
 
   check_for_free_nearby_object(
-    descriptors: object_descriptor[]
+    descriptors: ObjectDescriptor[]
   ): WorldObject | undefined {
     const obj = this.get_closest_object(
       this.current_perceptions.filter(
@@ -545,7 +529,7 @@ export class Person {
 
       case actions.drink:
         let drink = this.inventory.find((x) =>
-          x.descriptors.find((y) => y === object_descriptor.drinkable)
+          x.descriptors.find((y) => y === ObjectDescriptor.drinkable)
         );
         if (drink) {
           this.thirst -= 60;
@@ -556,7 +540,7 @@ export class Person {
           break;
         } else {
           let nearby_object = this.check_for_free_nearby_object([
-            object_descriptor.drinkable,
+            ObjectDescriptor.drinkable,
           ]);
           if (nearby_object) {
             if (
@@ -580,7 +564,7 @@ export class Person {
 
       case actions.eat:
         let food = this.inventory.find((x) =>
-          x.descriptors.find((y) => y === object_descriptor.edible)
+          x.descriptors.find((y) => y === ObjectDescriptor.edible)
         );
         if (food) {
           this.hunger -= 60;
@@ -592,7 +576,7 @@ export class Person {
           break;
         } else {
           let nearby_object = this.check_for_free_nearby_object([
-            object_descriptor.edible,
+            ObjectDescriptor.edible,
           ]);
           if (nearby_object) {
             if (
@@ -702,7 +686,7 @@ export class Person {
         // Has material?
         if (
           this.inventory.filter((x) =>
-            x.descriptors.some((y) => y === object_descriptor.building_material)
+            x.descriptors.some((y) => y === ObjectDescriptor.building_material)
           ).length > 3
         ) {
           this.current_action = actions.build;
@@ -720,7 +704,7 @@ export class Person {
               if (this.check_if_goal_position_reached(80)) {
                 let newShack = {
                   belongsTo: this.name,
-                  descriptors: [object_descriptor.wood_shack],
+                  descriptors: [ObjectDescriptor.wood_shack],
                   markedForTrade: false,
                   name: this.name + "s wooden shack",
                   position: this.position,
@@ -728,7 +712,7 @@ export class Person {
                 } as WorldObject;
                 this.homes.push(newShack);
                 this.world.objects.push(newShack);
-                this.memory.push({
+                this.hippocampus.push({
                   age: 0,
                   description: "This is where my home is",
                   position: this.position,
@@ -759,7 +743,7 @@ export class Person {
 
             let newShack = {
               belongsTo: this.name,
-              descriptors: [object_descriptor.wood_shack],
+              descriptors: [ObjectDescriptor.wood_shack],
               markedForTrade: false,
               name: this.name + "s wooden shack",
               position: this.position,
@@ -768,7 +752,7 @@ export class Person {
 
             this.homes.push(newShack);
             this.world.objects.push(newShack);
-            this.memory.push({
+            this.hippocampus.push({
               age: 0,
               description: "This is where my home is",
               position: this.position,
@@ -788,7 +772,7 @@ export class Person {
 
       case actions.fell_tree:
         let nearby_wood = this.check_for_free_nearby_object([
-          object_descriptor.building_material,
+          ObjectDescriptor.building_material,
         ]);
         if (nearby_wood) {
           if (
@@ -802,8 +786,8 @@ export class Person {
           }
         }
         let nearby_tree = this.check_for_free_nearby_object([
-          object_descriptor.walnut_tree,
-          object_descriptor.willow_tree,
+          ObjectDescriptor.walnut_tree,
+          ObjectDescriptor.willow_tree,
         ]) as Tree;
         if (nearby_tree) {
           if (
@@ -824,23 +808,23 @@ export class Person {
         // Hungry or thirsty
         if (this.hunger > 50 || this.thirst > 50) {
           if (this.thirst > 50)
-            desired_descriptors.push(object_descriptor.drinkable);
+            desired_descriptors.push(ObjectDescriptor.drinkable);
           if (this.hunger > 50)
-            desired_descriptors.push(object_descriptor.edible);
+            desired_descriptors.push(ObjectDescriptor.edible);
         } else {
           // Not hungry or thirsty
           if (
             this.inventory.filter((x) =>
-              x.descriptors.some((y) => y === object_descriptor.drinkable)
+              x.descriptors.some((y) => y === ObjectDescriptor.drinkable)
             ).length < 10
           )
-            desired_descriptors.push(object_descriptor.drinkable);
+            desired_descriptors.push(ObjectDescriptor.drinkable);
           if (
             this.inventory.filter((x) =>
-              x.descriptors.some((y) => y === object_descriptor.edible)
+              x.descriptors.some((y) => y === ObjectDescriptor.edible)
             ).length < 10
           )
-            desired_descriptors.push(object_descriptor.edible);
+            desired_descriptors.push(ObjectDescriptor.edible);
         }
 
         let nearby_object = this.check_for_free_nearby_object([
@@ -861,8 +845,8 @@ export class Person {
             break;
           }
         } else {
-          if (desired_descriptors.includes(object_descriptor.edible)) {
-            desired_descriptors.push(object_descriptor.fruit_tree);
+          if (desired_descriptors.includes(ObjectDescriptor.edible)) {
+            desired_descriptors.push(ObjectDescriptor.fruit_tree);
           }
           const memory_object = this.find_nearest_memory_fit(
             desired_descriptors,
@@ -886,7 +870,7 @@ export class Person {
 
           // Decide topic
           let topic: Memory;
-          let mems = this.memory.filter((x) => x.category === "need");
+          let mems = this.hippocampus.filter((x) => x.category === "need");
           if (mems.length > 0 && this.job?.title === undefined) {
             let randomNeedToFulfill: Memory = get_random_element(mems);
             topic = {
@@ -895,7 +879,7 @@ export class Person {
               description: randomNeedToFulfill.description,
             } as Memory;
           } else if (Math.random() > 0.4)
-            topic = get_random_element(this.memory) as Memory;
+            topic = get_random_element(this.hippocampus) as Memory;
           else {
             let foundNeed: Need = get_random_element(this.needs);
             topic = {
@@ -915,11 +899,11 @@ export class Person {
             )} steps from here. ${topic.description}`;
 
             if (
-              !partner.memory.find(
+              !partner.hippocampus.find(
                 (x: any) => x.related_objects === topic.related_objects
               )
             ) {
-              partner.memory.push({
+              partner.hippocampus.push({
                 age: 0,
                 description: "House of " + this.name,
                 position: topic.position,
@@ -928,11 +912,13 @@ export class Person {
           } else if (topic.category === "need") {
             message = `Someone should really provide some ${topic.description}...`;
 
-            let foundMemory = partner.memory.find(
+            let foundMemory = partner.hippocampus.find(
               (x) => x.description === topic.description
             );
+
+            // Add memory to other person
             if (!foundMemory) {
-              partner.memory.push({
+              partner.hippocampus.push({
                 age: 0,
                 description: topic.description,
                 position: {} as Position,
@@ -963,11 +949,11 @@ export class Person {
             } as Job;
             message = `I became a ${title}`;
             if (
-              !partner.memory.find(
+              !partner.hippocampus.find(
                 (x: Memory) => x.description === topic.description
               )
             ) {
-              partner.memory.push(topic);
+              partner.hippocampus.push(topic);
             }
           } else {
             message = `I know there is a ${
@@ -977,11 +963,11 @@ export class Person {
             )} steps from here. I was there ${topic.age} hours ago.`;
 
             if (
-              !partner.memory.find(
+              !partner.hippocampus.find(
                 (x: any) => x.related_objects === topic.related_objects
               )
             ) {
-              partner.memory.push(topic);
+              partner.hippocampus.push(topic);
             }
           }
           this.talk_timeout = 30;

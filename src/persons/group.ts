@@ -1,5 +1,6 @@
 import { Position } from "../geometry/position";
 import { WorldObject } from "../objects/worldObjects";
+import { Need } from "./need";
 import { Person } from "./person";
 
 export class MeetingPoint {
@@ -14,4 +15,5 @@ export class Group {
   members: Person[] = [];
   meeting_points: MeetingPoint[] = [];
   associated_objects: WorldObject[] = [];
+  needs: Need[] = [];
 }

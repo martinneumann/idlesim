@@ -1,10 +1,10 @@
 import { Position } from "../geometry/position";
-import { object_descriptor } from "../util/objectDescriptor";
+import { ObjectDescriptor } from "../util/objectDescriptor";
 
 export class WorldObject {
   constructor(
     name: string,
-    descriptors: object_descriptor[],
+    descriptors: ObjectDescriptor[],
     pos: Position,
     belongsTo: string
   ) {
@@ -14,7 +14,7 @@ export class WorldObject {
     this.belongsTo = belongsTo;
   }
   name: string = "";
-  descriptors: object_descriptor[] = [];
+  descriptors: ObjectDescriptor[] = [];
   position: Position = { x: 1, y: 1, z: 1 };
   belongsTo: string = "";
   markedForTrade: boolean = false;
@@ -29,7 +29,7 @@ export class Tree extends WorldObject {
 
   constructor(
     name: string,
-    descriptors: object_descriptor[],
+    descriptors: ObjectDescriptor[],
     pos: Position,
     belongsTo: string,
     timeToHarvest: number

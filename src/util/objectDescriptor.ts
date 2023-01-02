@@ -1,4 +1,4 @@
-export enum object_descriptor {
+export enum ObjectDescriptor {
   edible = 1,
   drinkable = 2,
   poisoned = 3,
