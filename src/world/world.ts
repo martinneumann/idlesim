@@ -16,6 +16,7 @@ import { ObjectDescriptor } from "../util/objectDescriptor";
 import { text } from "../util/text";
 import { get_color_by_object_type, get_random_element } from "../util/utils";
 import { Sound } from "./sound";
+import { Time } from "./time";
 
 const WIDTH = window.innerWidth;
 const HEIGHT = window.innerHeight;
@@ -32,7 +33,7 @@ export class World {
   p5: p5;
   cam: p5.Camera | undefined;
 
-  public worldClock = timer(100, 100);
+  public time = new Time();
 
   public sound = new Subject<Sound>();
 

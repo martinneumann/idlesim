@@ -1,9 +1,16 @@
 import { WorldObject } from "../objects/worldObjects";
 import { ObjectDescriptor } from "../util/objectDescriptor";
-import { Person } from "./person";
+
+/**
+ * Type guards
+ */
+const isMemory = (memory: Memory): memory is Memory => memory.type === "memory";
+const isObjectMemory = (memory: Memory): memory is ObjectMemory =>
+  memory.type === "object_memory";
 
 export type Category =
   | "house"
+  | "home"
   | "need"
   | "job_proposition"
   | "unspecified"
@@ -33,9 +40,9 @@ export class Memory {
   expiresAt: number = 3000;
 }
 
-class ObjectMemory extends Memory {
+export class ObjectMemory extends Memory {
   type: MemoryType = "object_memory";
-  descriptors: ObjectDescriptor[] = [];
+  relatedObject?: WorldObject;
 }
 
 /**
@@ -46,6 +53,10 @@ export class HippoCampus {
 
   public get memories() {
     return this._memories;
+  }
+
+  private set memories(memories: (Memory | ObjectMemory)[]) {
+    this._memories = memories;
   }
 
   /**
@@ -66,7 +77,9 @@ export class HippoCampus {
    */
   public getMemoriesByObjectDescriptor(objectDescriptors: ObjectDescriptor[]) {
     return this._getObjectMemories().filter((objectMemory) =>
-      objectMemory.descriptors.some((y) => objectDescriptors.includes(y))
+      objectMemory?.relatedObject?.descriptors.some((y) =>
+        objectDescriptors.includes(y)
+      )
     );
   }
 
@@ -89,7 +102,28 @@ export class HippoCampus {
     );
   }
 
-  public addMemory(memory: Memory) {
-    this.memories.push(memory);
+  /**
+   * Adds the memory if it does not exist
+   * @param memory
+   */
+  public addMemoryIfNotExist(memory: Memory | ObjectMemory) {
+    if (isObjectMemory(memory))
+      if (
+        !this.memories
+          .filter((allMemories): allMemories is ObjectMemory =>
+            isObjectMemory(allMemories)
+          )
+          .find((mem) => mem?.relatedObject === memory?.relatedObject)
+      )
+        this.memories.push(memory);
+  }
+
+  public ageAndRemoveMemories(timeInterval: number) {
+    this.memories.forEach((memory) => {
+      memory.age += timeInterval;
+    });
+    this.memories = this.memories.filter(
+      (memory) => memory.age < memory.expiresAt && memory.expiresAt !== -1
+    );
   }
 }

@@ -21,7 +21,7 @@ import { listen } from "./functions/listen";
 import { Group } from "./group";
 import { Inventory } from "./inventory/inventory";
 import { Job } from "./job";
-import { HippoCampus, Memory } from "./memory";
+import { HippoCampus, Memory, ObjectMemory } from "./memory";
 import { Need } from "./need";
 import { Relationship } from "./relationship";
 import { Skills } from "./skills";
@@ -92,7 +92,7 @@ export class Person {
     /**
      * Timing behavior
      */
-    this.timeTrigger$ = this.world.worldClock.pipe(
+    this.timeTrigger$ = this.world.time.worldClock.pipe(
       tap(() => {
         check_if_boundaries_are_reached(this.position, this.world);
 
@@ -120,7 +120,7 @@ export class Person {
           this.get_distance(this.position, sound.area_center) <=
           sound.area_radius
       ),
-      map((sound) => this.hippocampus.addMemory(listen(sound)))
+      map((sound) => this.hippocampus.addMemoryIfNotExist(listen(sound)))
     );
 
     this.timeTrigger$.subscribe();
@@ -324,12 +324,9 @@ export class Person {
   }
 
   update_memories(current_perceptions: WorldObject[]) {
-    // Forget old memories
-    this.hippocampus = this.hippocampus.filter(
-      (x) => x.age < 3000 || x.category === "house"
-    );
+    this.hippocampus.ageAndRemoveMemories(this.world.time.currentInterval);
 
-    // Add current perceptions
+    // Add current perceptions as object memories
     current_perceptions
       .filter((perception) =>
         perception.descriptors.some(
@@ -337,27 +334,14 @@ export class Person {
         )
       )
       .forEach((perception) => {
-        let mem = this.hippocampus.find((memory) =>
-          memory.related_objects?.find((object) => object === perception)
-        );
-        if (mem === undefined) {
-          this.hippocampus.push({
-            description: perception.name,
-            position: perception.position,
-            related_objects: [perception],
-            age: 0,
-          } as Memory);
-        } else {
-          mem.age = 0;
-        }
+        this.hippocampus.addMemoryIfNotExist({
+          type: "object_memory",
+          relatedObject: perception,
+          age: 0,
+          expiresAt: 3000,
+        } as ObjectMemory);
       });
-
-    this.hippocampus.forEach((memory) => {
-      memory.age += 1;
-    });
   }
-
-  get_status() {}
 
   get_distance(pos1: Position, pos2: Position) {
     return Math.sqrt(
