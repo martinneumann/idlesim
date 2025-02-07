@@ -29,7 +29,7 @@ export function lessThan(a: number, b: number) {
   return a < b;
 }
 
-type MemoryType = "memory" | "object_memory";
+export type MemoryType = "memory" | "object_memory";
 
 /**
  * Anything that is remembered by that person

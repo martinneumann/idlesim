@@ -343,7 +343,7 @@ export class World {
             </td>
           <td>${actions[person.current_action]}</td>
           <td>${JSON.stringify(
-            person.inventory
+            person.inventory.objects
               .map((item) => item.name)
               .reduce(
                 (cnt: any, cur) => ((cnt[cur] = cnt[cur] + 1 || 1), cnt),
@@ -354,7 +354,11 @@ export class World {
             .replace(/{/g, "")
             .replace(/}/g, "")}
             </td>
-          <td>${person.inventory.filter((x) => x.markedForTrade).length}
+          <td>${
+            person.inventory
+              .getAllItemsMarkedForTrade()
+              .filter((x) => x.markedForTrade).length
+          }
             </td>
             <td>${Math.round(person.hunger)}
             </td>
@@ -364,7 +368,7 @@ export class World {
             </td>
             <td>${person.trade_timeout}
             </td>
-            <td>${person.hippocampus.length}
+            <td>${person.hippocampus.memories.length}
             </td>
             <tr>`;
         });

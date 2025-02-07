@@ -1,5 +1,5 @@
 import { helpers, Observable } from "rx";
-import { filter, map, Subscription, tap } from "rxjs";
+import { filter, map, mergeMap, Subscription, tap, withLatestFrom } from "rxjs";
 import { check_if_boundaries_are_reached } from "../geometry/functions/checkIfBoundariesAreReached";
 import {
   get_random_position_2d,
@@ -120,7 +120,10 @@ export class Person {
           this.get_distance(this.position, sound.area_center) <=
           sound.area_radius
       ),
-      map((sound) => this.hippocampus.addMemoryIfNotExist(listen(sound)))
+      withLatestFrom(this.world.time.worldClock), // Get the latest worldClock value
+      map(([sound, currentTime]) =>
+        this.hippocampus.addMemoryIfNotExist(listen(sound, currentTime))
+      )
     );
 
     this.timeTrigger$.subscribe();
@@ -947,11 +950,11 @@ export class Person {
             )} steps from here. I was there ${topic.age} hours ago.`;
 
             if (
-              !partner.hippocampus.find(
+              !partner.hippocampus.memories.find(
                 (x: any) => x.related_objects === topic.related_objects
               )
             ) {
-              partner.hippocampus.push(topic);
+              partner.hippocampus.memories.push(topic);
             }
           }
           this.talk_timeout = 30;

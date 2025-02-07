@@ -4,7 +4,7 @@ import { ObjectDescriptor } from "../../util/objectDescriptor";
 export class Inventory {
   private _objects: WorldObject[] = [];
 
-  private get objects(): WorldObject[] {
+  public get objects(): WorldObject[] {
     return this._objects;
   }
 
